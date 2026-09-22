@@ -19,6 +19,7 @@ export const GROUPS = {
   static: grp(G_STATIC, G_ITEM | G_HELD | G_PLAYER | G_NPC),
   item: grp(G_ITEM, G_STATIC | G_ITEM | G_FIXTURE | G_PLAYER | G_HELD | G_NPC),
   held: grp(G_HELD, G_STATIC | G_ITEM | G_FIXTURE | G_HELD | G_NPC),   // held things pass through chefs
+  heldBits: grp(G_HELD, G_STATIC | G_ITEM | G_FIXTURE | G_NPC),          // a handful of bits: they don't shove each other in the hand
   fixture: grp(G_FIXTURE, G_ITEM | G_HELD | G_PLAYER),                 // doors never fight their cabinet
   player: grp(G_PLAYER, G_STATIC | G_ITEM | G_FIXTURE),
   npc: grp(G_NPC, G_ITEM | G_HELD),
@@ -43,6 +44,7 @@ export const HOLD = {
   fixtureK: 140, fixtureC: 14, fixtureMaxF: 75, fixtureBreak: 1.0,
   knobRate: 22, knobMax: 5,
   throwMin: 3.2, throwMax: 11.5, throwChargeTime: 0.9,
+  handful: 12, gatherR: 0.15, sweepR: 0.11,   // small cut food: max pieces per hand, pick-up radius around the first piece, sweep radius
 };
 
 // ---- cooking -------------------------------------------------------------

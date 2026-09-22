@@ -2,6 +2,7 @@
 import { STR } from './i18n.js';
 import { RECIPES, RECIPE_BY_ID, describeReq } from './orders.js';
 import { ITEMS, itemName, doneness } from './items.js';
+import { buildBook } from './cookbook.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -14,19 +15,43 @@ export class Hud {
     $('help').innerHTML = '<h3>' + (this.lang === 'en' ? 'Controls' : 'Kontroller') + '</h3>' + S.controls.map(([k, v]) => `<div><kbd>${k}</kbd><span>${v}</span></div>`).join('');
     $('lockmsg').textContent = S.clickToPlay;
   }
-  // recipe book: today's menu + the dishes that unlock next in this restaurant
-  setMenu(ids, rest, level) {
-    const S = this.S, li = this.lang === 'en' ? 1 : 0, have = new Set(ids);
-    const menu = RECIPES.filter(r => have.has(r.id)), next = RECIPES.filter(r => !have.has(r.id) && r.tier <= rest.tier).sort((a, b) => a.lvl - b.lvl).slice(0, 6);
-    const card = (r, locked) => `<div class="card${locked ? ' locked' : ''}"><div class="ico">${r.icon}</div><b>${r.n[li]}</b>${locked ? `<p>🔒 ${li ? 'chef level' : 'kocknivå'} ${r.lvl}</p>` : `<ul>${r.req.map(q => `<li>${describeReq(q, this.lang)}</li>`).join('')}</ul><i>${r.price} kr</i>`}</div>`;
-    $('book').innerHTML = `<h2>${rest.icon} ${rest.n[li]} — ${S.recipes} <small>(${li ? 'chef level' : 'kocknivå'} ${level})</small></h2><div class="howto">${S.howto.map(h => `<p>• ${h}</p>`).join('')}</div><div class="cards">${menu.map(r => card(r)).join('')}${next.map(r => card(r, true)).join('')}</div>`;
+  // the chef's notebook: intro + technique pages + one spread per dish on today's menu (+ teasers for locked dishes)
+  setMenu(ids, rest, level, K) {
+    this.nb = buildBook(this.lang, ids, rest.tier, level, K); this.page = 0; this.bookOpen = false; this.rest = rest;
+    const b = $('book');
+    b.innerHTML = `<div class="nb"><div class="pg left" id="pgL"></div><div class="pg right" id="pgR"></div><button class="flip prev" id="bprev">◀</button><button class="flip next" id="bnext">▶</button><div class="pgno" id="pgno"></div><button class="flip close" id="bclose">✕</button></div>`;
+    $('bprev').onclick = () => this.flip(-1); $('bnext').onclick = () => this.flip(1); $('bclose').onclick = () => this.book_(false);
+    this.renderPage();
   }
+  flip(d) { if (!this.nb) return; const n = this.nb.pages.length; this.page = (this.page + d + n) % n; this.renderPage(); }
+  renderPage() {
+    if (!this.nb) return;
+    const pg = this.nb.pages[this.page], L = this.nb.labels, li = this.lang === 'en' ? 1 : 0, esc2 = esc;
+    const photo = (src, cls = '') => `<div class="photo ${cls}"><img src="${src}" alt="" onerror="this.parentElement.style.display='none'"></div>`;
+    let left = '', right = '';
+    if (pg.kind === 'intro') {
+      left = `<h1 class="hand">${esc2(pg.title)}</h1><p class="hand big">${esc2(pg.text)}</p><p class="hl">${esc2(pg.doneness)}</p><p class="small">${esc2(pg.flip)}</p>`;
+      right = `<h2 class="hand">${esc2(L.tips)}</h2><div class="stickies">${pg.tips.map((t, i) => `<div class="sticky c${i % 4}" style="transform:rotate(${((i * 7) % 9) - 4}deg)">${esc2(t)}</div>`).join('')}</div>`;
+    } else if (pg.kind === 'tech') {
+      left = `<h1 class="hand">${esc2(pg.title)}</h1>${photo(pg.photo, 'tape')}`;
+      right = `<ul class="hand lines">${pg.lines.map(l => `<li>${esc2(l)}</li>`).join('')}</ul>`;
+    } else if (pg.kind === 'recipe') {
+      left = `<h1 class="hand">${pg.icon} ${esc2(pg.title)} <small>${pg.price} ${L.price}</small></h1>${photo(pg.photo, 'tape')}${pg.note ? `<p class="note hand">${esc2(pg.note)}</p>` : ''}<h3 class="hand">${esc2(L.ingredients)}</h3><ul class="ing">${pg.ingredients.map(x => `<li>${esc2(x)}</li>`).join('')}</ul>`;
+      right = `<h3 class="hand">${esc2(L.steps)}</h3><ol class="steps">${pg.steps.map(s => `<li>${esc2(s)}</li>`).join('')}</ol><p class="hl small">${esc2(pg.doneness)}</p>`;
+    } else if (pg.kind === 'locked') {
+      left = `<h1 class="hand">${pg.icon} ${esc2(pg.title)}</h1>${photo(pg.photo, 'tape grey')}`;
+      right = `<p class="hand big">🔒 ${esc2(pg.text)}</p>`;
+    }
+    $('pgL').innerHTML = left; $('pgR').innerHTML = right; $('pgno').textContent = `${this.page + 1} / ${this.nb.pages.length}`;
+    $('pgL').scrollTop = 0; $('pgR').scrollTop = 0;
+  }
+  book_(on) { this.bookOpen = on; $('book').style.display = on ? 'flex' : 'none'; if (on) this.renderPage(); }
+  book(on) { this.book_(on); }
   setEmotes(list) { $('emotes').innerHTML = list.map((e, i) => `<span><kbd>${(i + 1) % 10}</kbd>${e.icon}</span>`).join(''); }
   setGain(html) { const g = $('gain'); if (g) g.innerHTML = html; }
   show(on) { $('hud').style.display = on ? 'block' : 'none'; }
   setLocked(locked, paused) { $('lockmsg').style.display = locked || paused ? 'none' : 'flex'; $('cross').style.display = locked ? 'block' : 'none'; }
   toggleHelp() { this.helpOn = !this.helpOn; $('help').style.display = this.helpOn ? 'block' : 'none'; }
-  book(on) { $('book').style.display = on ? 'block' : 'none'; }
   setRoom(code, n, online) { $('room').innerHTML = online ? `${this.S.kitchenCode}: <b>${code}</b> · ${n} ${this.S.chefs}` : `<span class="off">${this.S.solo}</span>`; }
 
   setService(svc) {

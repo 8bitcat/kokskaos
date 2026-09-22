@@ -277,7 +277,7 @@ export function buildKitchen({ R, world, scene, sim, view, lang = 'sv', rest, up
       if (sh.length > 1) f.box(lx, y + 0.08, -0.03, 0.02, 0.13, D - 0.2, 0xbfe6f2, { solid: true, mat: 'glass' });
       sh.forEach(([kind, n], j) => {
         const cx = lx - (w - 0.2) / 2 + per * (j + 0.5);
-        K.stock.push({ kind, n, zone: f.aabb(cx, y + 0.2, -0.03, per, 0.4, D - 0.16), spawn: (r) => f.pt(cx + (r() - 0.5) * (per - 0.22), y + 0.1 + r() * 0.08, -0.06 + (r() - 0.5) * 0.4), every: 4 });
+        K.stock.push({ kind, n, src: 'fridge', label, zone: f.aabb(cx, y + 0.2, -0.03, per, 0.4, D - 0.16), spawn: (r) => f.pt(cx + (r() - 0.5) * (per - 0.22), y + 0.1 + r() * 0.08, -0.06 + (r() - 0.5) * 0.4), every: 4 });
       });
     });
     const dh = FH - 0.16;
@@ -298,7 +298,7 @@ export function buildKitchen({ R, world, scene, sim, view, lang = 'sv', rest, up
     f.box(lx, y0 + wh / 2, idp / 2 + t / 2, iw + t * 2, wh, t, COL.wood, { solid: true }); f.box(lx, y0 + wh / 2, -idp / 2 - t / 2, iw + t * 2, wh, t, COL.wood, { solid: true });
     for (const s of [-1, 1]) f.box(lx + s * (iw / 2 + t / 2), y0 + wh / 2, 0, t, wh, idp, COL.wood, { solid: true });
     const s = signMesh(label, 0.8, 0.22, '#fff', '#4e9a3a'); f.obj(s, lx, 1.55, -D / 2 + 0.02);
-    K.stock.push({ kind, n, zone: f.aabb(lx, y0 + 0.3, 0, iw, 0.6, idp), spawn: (r) => f.pt(lx + (r() - 0.5) * 0.6, y0 + 0.2 + r() * 0.25, (r() - 0.5) * 0.4), every: 3 });
+    K.stock.push({ kind, n, src: 'crate', label, zone: f.aabb(lx, y0 + 0.3, 0, iw, 0.6, idp), spawn: (r) => f.pt(lx + (r() - 0.5) * 0.6, y0 + 0.2 + r() * 0.25, (r() - 0.5) * 0.4), every: 3 });
     return w;
   }
   function shelfUnit(f, lx, rows, label, color = '#c77d2e') {
@@ -315,7 +315,7 @@ export function buildKitchen({ R, world, scene, sim, view, lang = 'sv', rest, up
       row.forEach((it, j) => {
         const cx = lx - (w - 0.2) / 2 + per * (j + 0.5);
         if (row.length > 1 && j > 0 && it.stock) f.box(cx - per / 2, y + 0.09, z0, 0.02, 0.14, sd - 0.06, COL.steelDark, { solid: true });
-        if (it.stock) K.stock.push({ kind: it.kind, n: it.n, zone: f.aabb(cx, y + 0.22, z0, per, 0.4, sd), spawn: (r) => f.pt(cx + (r() - 0.5) * Math.max(0.02, per - 0.3), y + 0.1 + r() * 0.1, z0 + (r() - 0.5) * 0.25), every: 4, yaw: it.yaw });
+        if (it.stock) K.stock.push({ kind: it.kind, n: it.n, src: 'shelf', label, zone: f.aabb(cx, y + 0.22, z0, per, 0.4, sd), spawn: (r) => f.pt(cx + (r() - 0.5) * Math.max(0.02, per - 0.3), y + 0.1 + r() * 0.1, z0 + (r() - 0.5) * 0.25), every: 4, yaw: it.yaw });
         else for (let k = 0; k < it.n; k++) tool(it.kind, f.pt(cx, y + 0.022 + k * (it.dy || 0.05), z0), f.yaw, it.home !== false);
       });
     });
@@ -510,9 +510,48 @@ export function buildKitchen({ R, world, scene, sim, view, lang = 'sv', rest, up
   };
   for (const x of lay.tablesFront) tableAt(x, zN - 3.9, true);
   if (diningDepth >= 7.8) for (const x of lay.tablesBack) tableAt(x, zN - 6.3, false);
-  K.waiterIdle = [[-(hx - 1.4), zN - 1.4], [hx - 1.4, zN - 1.4], [-(hx - 1.0), zN - 2.4]];
+  K.waiterIdle = [[-passX + 1.0, zN - 1.15], [passX - 1.0, zN - 1.15], [0, zN - 1.15]];   // waiting at the pass, in view of the kitchen
   const gap = Math.min(1.2, (passX * 2 - 1) / 8);
   for (let i = 0; i < 9; i++) K.spawns.push([(i - 4) * gap, 0, zN + 2.4]);
   K.batch.build(scene);
   return K;
+}
+
+// ================================================================ wall posters: chalkboard menu + sticky-note tips
+function wrapLines(g, text, maxW) {
+  const words = String(text).split(/\s+/), lines = []; let cur = '';
+  for (const w of words) { const t = cur ? cur + ' ' + w : w; if (g.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; }
+  if (cur) lines.push(cur); return lines;
+}
+export function addPosters(K, scene, menu, lang, tips = []) {
+  const { hx, hz, passX } = ROOM, zN = -hz, sideW = hx - passX, li = lang === 'en' ? 1 : 0;
+  const plane = (w, h, px, draw) => { const cv = document.createElement('canvas'); cv.width = px; cv.height = Math.round(px * h / w); draw(cv.getContext('2d'), cv.width, cv.height); const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4; const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex })); scene.add(m); return m; };
+  // chalkboard on the wall left of the pass
+  if (sideW > 1.6 && menu.length) {
+    const w = Math.min(2.8, sideW - 0.5), h = w * 0.66;
+    const m = plane(w, h, 1024, (g, W, H) => {
+      g.fillStyle = '#6b4a2b'; g.fillRect(0, 0, W, H); g.fillStyle = '#243d2f'; g.fillRect(22, 22, W - 44, H - 44);
+      g.fillStyle = '#f4f1e6'; g.font = 'bold 74px Caveat, cursive'; g.textAlign = 'center'; g.fillText(li ? "TODAY'S MENU" : 'DAGENS MENY', W / 2, 96);
+      g.strokeStyle = '#f4f1e6'; g.lineWidth = 3; g.beginPath(); g.moveTo(90, 112); g.lineTo(W - 90, 112); g.stroke();
+      const cols = menu.length > 7 ? 2 : 1, rows = Math.ceil(menu.length / cols), size = Math.max(28, Math.min(72, Math.floor((H - 150) / rows / 1.25)));
+      g.font = `${size}px Caveat, cursive`; g.textAlign = 'left';
+      menu.forEach((r, i) => { const c = i % cols, row = Math.floor(i / cols), x = 60 + c * (W - 100) / cols, y = 150 + row * (H - 160) / rows + size * 0.8; g.fillStyle = '#fff0b0'; g.fillText(r.icon, x, y); g.fillStyle = '#f4f1e6'; g.fillText(r.n[li], x + size * 1.4, y); });
+    });
+    m.position.set(-(passX + sideW / 2), Math.min(2.05, ROOM.wallH - h / 2 - 0.3), zN + 0.17);
+  }
+  // sticky notes: right of the pass (above the lever sign) and along the south wall over the sinks
+  const spots = [];
+  for (let i = 0; i < 6; i++) spots.push([passX + 1.85 + (i % 3) * 0.5, 2.0 - Math.floor(i / 3) * 0.5, zN + 0.165, 0]);   // right of the service-lever sign
+  for (let i = 0; i < 8; i++) spots.push([hx - 1.2 - i * 1.0, 1.72 + (i % 2) * 0.46, hz - 0.03, Math.PI]);
+  const colors = ['#fff59b', '#ffc4d6', '#bfe4ff', '#c9f0a0'];
+  tips.slice(0, spots.length).forEach((tip, i) => {
+    const [x, y, z, ry] = spots[i]; if (Math.abs(x) > hx - 0.3) return;
+    const m = plane(0.42, 0.42, 256, (g, W, H) => {
+      g.fillStyle = colors[i % 4]; g.fillRect(0, 0, W, H); g.fillStyle = 'rgba(0,0,0,0.06)'; g.fillRect(0, H - 14, W, 14);
+      g.fillStyle = '#2b2a33'; g.textAlign = 'center'; let size = 44; let lines;
+      do { g.font = `bold ${size}px Caveat, cursive`; lines = wrapLines(g, tip[li], W - 30); size -= 4; } while (lines.length > 4 && size > 22);
+      const lh = size * 1.05; lines.forEach((l, k) => g.fillText(l, W / 2, H / 2 + (k - (lines.length - 1) / 2) * lh + size * 0.35));
+    });
+    m.position.set(x, y, z); m.rotation.y = ry; m.rotation.z = (((i * 7) % 9) - 4) * 0.035;
+  });
 }

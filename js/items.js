@@ -13,7 +13,7 @@ export { C };
 export const ITEMS = {
   // ======================= cookware & tools =======================
   pan: {
-    n: ['Stekpanna', 'Frying pan'], mass: 1.1, mat: 'metal', friction: 0.55,
+    n: ['Stekpanna', 'Frying pan'], mass: 1.1, mat: 'metal', friction: 0.55, grip: 'back', hold: [0.335, 0.05, 0],
     col: [cyl(0.008, 0.175, [0, 0.008, 0], null, 0.62), ...ring(12, 0.165, 0.014, 0.062, 0.014, 0.26),
       box(0.12, 0.011, 0.02, [0.295, 0.05, 0], null, 0.12)],
     container: { r: 0.165, y0: 0.012, h: 0.2, heat: true, floorY: 0.016 },
@@ -27,7 +27,7 @@ export const ITEMS = {
     ],
   },
   saucepan: {
-    n: ['Kastrull', 'Saucepan'], mass: 1.0, mat: 'metal', friction: 0.5,
+    n: ['Kastrull', 'Saucepan'], mass: 1.0, mat: 'metal', friction: 0.5, grip: 'back', hold: [0.225, 0.11, 0],
     col: [cyl(0.008, 0.125, [0, 0.008, 0], null, 0.6), ...ring(10, 0.115, 0.014, 0.13, 0.014, 0.3),
       box(0.1, 0.011, 0.018, [0.225, 0.11, 0], null, 0.1)],
     container: { r: 0.115, y0: 0.012, h: 0.24, heat: true, fill: true, floorY: 0.016, waterH: 0.1 },
@@ -39,7 +39,7 @@ export const ITEMS = {
     ],
   },
   pot: {
-    n: ['Stor gryta', 'Stock pot'], mass: 1.9, mat: 'metal', friction: 0.5,
+    n: ['Stor gryta', 'Stock pot'], mass: 1.9, mat: 'metal', friction: 0.5, grip: 'up',
     col: [cyl(0.009, 0.19, [0, 0.009, 0], null, 0.55), ...ring(12, 0.178, 0.016, 0.24, 0.016, 0.39),
       box(0.03, 0.012, 0.045, [0.225, 0.19, 0], null, 0.03), box(0.03, 0.012, 0.045, [-0.225, 0.19, 0], null, 0.03)],
     container: { r: 0.178, y0: 0.014, h: 0.36, heat: true, fill: true, floorY: 0.018, waterH: 0.2 },
@@ -52,7 +52,7 @@ export const ITEMS = {
     ],
   },
   tray: {
-    n: ['Ugnsplåt', 'Baking tray'], mass: 0.8, mat: 'metal', friction: 0.6,
+    n: ['Ugnsplåt', 'Baking tray'], mass: 0.8, mat: 'metal', friction: 0.6, grip: 'up',
     col: [box(0.22, 0.007, 0.16, [0, 0.007, 0], null, 0.7), box(0.22, 0.016, 0.008, [0, 0.028, 0.152], null, 0.075),
       box(0.22, 0.016, 0.008, [0, 0.028, -0.152], null, 0.075), box(0.008, 0.016, 0.16, [0.212, 0.028, 0], null, 0.075),
       box(0.008, 0.016, 0.16, [-0.212, 0.028, 0], null, 0.075)],
@@ -66,7 +66,7 @@ export const ITEMS = {
     ],
   },
   basket: {
-    n: ['Fritöskorg', 'Fry basket'], mass: 0.7, mat: 'metal', friction: 0.6,
+    n: ['Fritöskorg', 'Fry basket'], mass: 0.7, mat: 'metal', friction: 0.6, grip: 'back', hold: [0.26, 0.35, 0],
     col: [box(0.13, 0.006, 0.095, [0, 0.006, 0], null, 0.5), box(0.13, 0.065, 0.006, [0, 0.07, 0.089], null, 0.1),
       box(0.13, 0.065, 0.006, [0, 0.07, -0.089], null, 0.1), box(0.006, 0.065, 0.095, [0.124, 0.07, 0], null, 0.1),
       box(0.006, 0.065, 0.095, [-0.124, 0.07, 0], null, 0.1), box(0.13, 0.012, 0.016, [0.25, 0.35, 0], null, 0.08),
@@ -83,7 +83,7 @@ export const ITEMS = {
     ],
   },
   plate: {
-    n: ['Tallrik', 'Plate'], mass: 0.45, friction: 0.9, sfx: 'clink',
+    n: ['Tallrik', 'Plate'], mass: 0.45, friction: 0.9, sfx: 'clink', grip: 'up',
     col: [cyl(0.008, 0.15, [0, 0.008, 0], null, 0.8), ...ring(10, 0.138, 0.014, 0.036, 0.014, 0.2)],
     container: { r: 0.15, y0: 0.01, h: 0.3, floorY: 0.016, serve: true },
     parts: [
@@ -92,7 +92,7 @@ export const ITEMS = {
     ],
   },
   bowl: {
-    n: ['Skål', 'Bowl'], mass: 0.45, friction: 0.9, sfx: 'clink',
+    n: ['Skål', 'Bowl'], mass: 0.45, friction: 0.9, sfx: 'clink', grip: 'up',
     col: [cyl(0.008, 0.085, [0, 0.008, 0], null, 0.7), ...ring(10, 0.118, 0.014, 0.095, 0.014, 0.3)],
     container: { r: 0.125, y0: 0.01, h: 0.3, floorY: 0.016, serve: true },
     parts: [
@@ -101,32 +101,32 @@ export const ITEMS = {
     ],
   },
   board: {
-    n: ['Skärbräda', 'Cutting board'], mass: 1.6, friction: 0.9, sfx: 'wood',
+    n: ['Skärbräda', 'Cutting board'], mass: 1.6, friction: 0.9, sfx: 'wood', grip: 'up',
     col: [box(0.23, 0.016, 0.16, [0, 0.016, 0])],
     parts: [{ g: 'box', sz: [0.46, 0.032, 0.32], p: [0, 0.016, 0], c: C.wood, round: 1 },
       { g: 'box', sz: [0.4, 0.004, 0.26], p: [0, 0.0325, 0], c: 0xd9a566 }],
   },
   knife: {
-    n: ['Kockkniv', "Chef's knife"], mass: 0.25, mat: 'metal', friction: 0.5, blade: 1,
+    n: ['Kockkniv', "Chef's knife"], mass: 0.25, mat: 'metal', friction: 0.5, blade: 1, grip: 'fwd', hold: [-0.06, 0, 0],
     col: [box(0.06, 0.013, 0.012, [-0.06, 0, 0], null, 0.6), box(0.105, 0.024, 0.005, [0.105, -0.004, 0], null, 0.4, { blade: 1 })],
     parts: [{ g: 'cap', r: 0.015, len: 0.09, p: [-0.06, 0, 0], r3: CAPX, c: C.black },
       { g: 'blade', len: 0.21, h: 0.05, p: [0, 0.02, 0], c: C.steel }],
   },
   cleaver: {
-    n: ['Köttyxa', 'Cleaver'], mass: 0.45, mat: 'metal', friction: 0.5, blade: 1,
+    n: ['Köttyxa', 'Cleaver'], mass: 0.45, mat: 'metal', friction: 0.5, blade: 1, grip: 'fwd', hold: [-0.06, 0, 0],
     col: [box(0.06, 0.014, 0.013, [-0.06, 0, 0], null, 0.4), box(0.09, 0.055, 0.006, [0.09, -0.02, 0], null, 0.6, { blade: 1 })],
     parts: [{ g: 'cap', r: 0.016, len: 0.09, p: [-0.06, 0, 0], r3: CAPX, c: C.woodDark },
       { g: 'box', sz: [0.18, 0.11, 0.008], p: [0.09, -0.02, 0], c: C.steel },
       { g: 'box', sz: [0.18, 0.012, 0.012], p: [0.09, 0.034, 0], c: C.steelDark }],
   },
   spatula: {
-    n: ['Stekspade', 'Spatula'], mass: 0.18, friction: 0.6,
+    n: ['Stekspade', 'Spatula'], mass: 0.18, friction: 0.6, grip: 'fwd', hold: [-0.13, 0.012, 0],
     col: [box(0.13, 0.01, 0.011, [-0.13, 0.012, 0], null, 0.6), box(0.055, 0.005, 0.045, [0.05, 0, 0], null, 0.4)],
     parts: [{ g: 'cap', r: 0.011, len: 0.24, p: [-0.13, 0.012, 0], r3: CAPX, c: C.black },
       { g: 'box', sz: [0.11, 0.008, 0.09], p: [0.05, 0, 0], c: C.steel, round: 1 }],
   },
   spoon: {
-    n: ['Träslev', 'Wooden spoon'], mass: 0.12, friction: 0.8, sfx: 'wood',
+    n: ['Träslev', 'Wooden spoon'], mass: 0.12, friction: 0.8, sfx: 'wood', grip: 'fwd', hold: [-0.1, 0, 0],
     col: [box(0.13, 0.009, 0.009, [-0.1, 0, 0], null, 0.6), box(0.04, 0.007, 0.028, [0.065, 0, 0], null, 0.4)],
     parts: [{ g: 'cap', r: 0.009, len: 0.24, p: [-0.1, 0, 0], r3: CAPX, c: C.wood },
       { g: 'ball', r: 0.04, sc: [1, 0.22, 0.7], p: [0.065, 0, 0], c: C.wood }],
@@ -138,7 +138,7 @@ export const ITEMS = {
       { g: 'cap', r: 0.013, len: 0.4, p: [0, 0, 0], r3: CAPX, c: C.woodDark }],
   },
   jar: {
-    n: ['Mixerkanna', 'Blender jar'], mass: 0.6, friction: 0.6, sfx: 'clink',
+    n: ['Mixerkanna', 'Blender jar'], mass: 0.6, friction: 0.6, sfx: 'clink', grip: 'up',
     col: [cyl(0.009, 0.085, [0, 0.009, 0], null, 0.6), ...ring(8, 0.078, 0.016, 0.25, 0.012, 0.35),
       box(0.012, 0.07, 0.012, [0.125, 0.14, 0], null, 0.05)],
     container: { r: 0.08, y0: 0.012, h: 0.3, floorY: 0.018, blend: true },
@@ -153,12 +153,12 @@ export const ITEMS = {
     ],
   },
   salt: {
-    n: ['Saltkar', 'Salt shaker'], mass: 0.15, friction: 0.7, sfx: 'clink',
+    n: ['Saltkar', 'Salt shaker'], mass: 0.15, friction: 0.7, sfx: 'clink', grip: 'up',
     col: [cyl(0.05, 0.028, [0, 0.05, 0])],
     parts: [{ g: 'cyl', r: 0.028, rt: 0.022, h: 0.085, p: [0, 0.0425, 0], c: C.white }, { g: 'hemi', r: 0.023, p: [0, 0.085, 0], c: C.steel, flip: 1 }],
   },
   pepper: {
-    n: ['Pepparkvarn', 'Pepper mill'], mass: 0.2, friction: 0.7, sfx: 'wood',
+    n: ['Pepparkvarn', 'Pepper mill'], mass: 0.2, friction: 0.7, sfx: 'wood', grip: 'up',
     col: [cyl(0.075, 0.028, [0, 0.075, 0])],
     parts: [{ g: 'cyl', r: 0.03, rt: 0.02, h: 0.1, p: [0, 0.05, 0], c: C.woodDark }, { g: 'ball', r: 0.028, p: [0, 0.12, 0], c: C.woodDark },
       { g: 'cyl', r: 0.024, h: 0.012, p: [0, 0.1, 0], c: C.steel }],

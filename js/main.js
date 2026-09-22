@@ -15,6 +15,8 @@ import { Profile } from './profile.js';
 import { Meta } from './meta.js';
 import { REST_BY_ID } from './restaurants.js';
 import { EMOTES } from './avatars.js';
+import { setText, getText } from './cookbook.js';
+import { addPosters } from './kitchen.js';
 
 const $ = (id) => document.getElementById(id);
 const store = { get: (k, d) => { try { return localStorage.getItem('kokskaos.' + k) ?? d; } catch (e) { return d; } }, set: (k, v) => { try { localStorage.setItem('kokskaos.' + k, v); } catch (e) { /* private mode */ } } };
@@ -87,11 +89,12 @@ class Game {
       this.player = new LocalPlayer(RAPIER, this.world, $('game'), this.spawnPos);
       this.code = code;
     }
-    this.hud.setMenu(this.menu.map(r => r.id), this.rest, this.level);
+    this.hud.setMenu(this.menu.map(r => r.id), this.rest, this.level, this.K);
+    addPosters(this.K, this.view.scene, this.menu, lang, getText().TIPS);
     this.view.setLocal(this.localId, color);
     for (const p of this.roster.values()) this.view.upsertPlayer(p);
     this.player.enabled = true; this.player.yaw = 0; this.player.home = this.K.spawns[4];
-    this.player.onLock = (l) => { this.hud.setLocked(l, this.paused); if (!l && !this.testMode) this.setPaused(true); };
+    this.player.onLock = (l) => { this.hud.setLocked(l, this.paused); if (!l && !this.testMode) { if (!this.bookFromPause) this.toggleBook(false); this.setPaused(true); } };
     $('menu').style.display = 'none'; this.hud.show(true); this.hud.setLocked(false, false);
     this.hud.setEmotes(this.meta.ownedEmotes().slice(0, 10));
     this.bindKeys(); this.updateRoom();
@@ -284,17 +287,25 @@ class Game {
 
   bindKeys() {
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'Tab') { e.preventDefault(); this.hud.book(true); }
+      if (e.code === 'Tab') { e.preventDefault(); if (!e.repeat) this.toggleBook(!this.hud.bookOpen); }
+      else if (this.hud.bookOpen && (e.code === 'ArrowLeft' || e.code === 'KeyA' || e.code === 'PageUp')) this.hud.flip(-1);
+      else if (this.hud.bookOpen && (e.code === 'ArrowRight' || e.code === 'KeyD' || e.code === 'PageDown' || e.code === 'Space')) { e.preventDefault(); this.hud.flip(1); }
+      else if (this.hud.bookOpen && e.code === 'Escape') this.toggleBook(false);
       else if (e.code === 'KeyH' && this.player.locked) this.hud.toggleHelp();
       else if (e.code === 'KeyM' && this.player.locked) { audio.setMuted(!audio.muted); this.hud.toast('text', audio.muted ? '🔇' : '🔊'); }
     });
-    window.addEventListener('keyup', (e) => { if (e.code === 'Tab') this.hud.book(false); });
     $('resume').onclick = () => { this.setPaused(false); $('game').requestPointerLock?.(); };
     $('startsvc').onclick = () => { if (this.isHost && !this.service.running) this.service.start(this.sim.players.size); this.setPaused(false); $('game').requestPointerLock?.(); };
     $('pwardrobe').onclick = () => this.meta.openWardrobe();
+    $('pbook').onclick = () => { this.bookFromPause = true; $('pause').style.display = 'none'; this.toggleBook(true); };
+    $('bclose').addEventListener('click', () => this.toggleBook(false));
     $('quit').onclick = () => { this.net.close(); location.href = location.pathname; };
     $('startsvc').style.display = this.isHost ? '' : 'none';
     window.addEventListener('beforeunload', () => { this.profile.save(); this.net.close(); });
+  }
+  toggleBook(on) {
+    this.hud.book(on); this.player.frozen = on;
+    if (!on && this.bookFromPause) { this.bookFromPause = false; $('pause').style.display = 'flex'; }
   }
   setPaused(p) { this.paused = p; $('pause').style.display = p ? 'flex' : 'none'; this.hud.setLocked(this.player.locked, p); }
 }
@@ -304,7 +315,7 @@ async function boot() {
   document.documentElement.lang = lang;
   $('tagline').textContent = S.tagline; $('lname').textContent = S.name; $('bhost').textContent = S.host; $('bjoin').textContent = S.join; $('bsolo').textContent = S.solo;
   $('code').placeholder = S.code; $('resume').textContent = S.resume; $('startsvc').textContent = S.startService; $('quit').textContent = S.quit; $('ptitle').textContent = S.paused; $('pcodel').textContent = S.kitchenCode;
-  $('pwardrobe').textContent = '🎩 ' + (lang === 'en' ? 'Wardrobe' : 'Garderob');
+  $('pwardrobe').textContent = '🎩 ' + (lang === 'en' ? 'Wardrobe' : 'Garderob'); $('pbook').textContent = '📖 ' + (lang === 'en' ? "Chef's notes" : 'Kockens anteckningar');
   $('langbtn').textContent = lang === 'sv' ? 'English' : 'Svenska'; $('langbtn').onclick = () => { store.set('lang', lang === 'sv' ? 'en' : 'sv'); location.href = location.pathname; };
   $('ver').textContent = 'v' + VERSION;
   const nameEl = $('name'); nameEl.value = store.get('name', ''); nameEl.placeholder = lang === 'sv' ? 'Kocken' : 'Chef';
@@ -320,7 +331,10 @@ async function boot() {
   meta.renderCareer();
   if (params.get('join')) $('code').value = params.get('join').toUpperCase().slice(0, 4);
   $('status').textContent = S.loading;
-  await RAPIER.init();
+  const fontsReady = Promise.race([document.fonts.load('700 30px Caveat').then(() => document.fonts.load('20px "Patrick Hand"')), new Promise(r => setTimeout(r, 3000))]).catch(() => {});
+  const txt = await import('./cookbook_text.js').then(m => ({ NOTES: m.NOTES || {}, TIPS: m.TIPS || [], INTRO: m.INTRO || ['', ''], DONENESS: m.DONENESS || ['', ''] })).catch(() => ({}));
+  setText(txt);
+  await RAPIER.init(); await fontsReady;
   $('status').textContent = ''; $('buttons').classList.remove('disabled');
   game = window.game = new Game(profile, meta);
   const go = async (mode) => {

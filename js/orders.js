@@ -45,7 +45,7 @@ export const RECIPES = [
   { id: 'carrots', n: ['Fisk med kokta morötter', 'Fish & boiled carrots'], icon: '🥕', price: 140, patience: 210, w: 1, tier: 1, lvl: 6,
     req: [{ k: 'fish', n: 1, cooked: ['fry', 'bake', 'deepfry'] }, { k: 'carrotcoin', n: 4, cooked: ['boil'] }] },
   { id: 'fishfingers', n: ['Fiskpinnar med mos', 'Fish fingers & mash'], icon: '🐠', price: 150, patience: 210, w: 2, tier: 1, lvl: 7,
-    req: [{ k: 'fishfinger', n: 4, cooked: ['fry', 'deepfry', 'bake'] }, { k: 'mash', n: 3 }] },
+    req: [{ k: 'fishfinger', n: 4, cooked: ['deepfry', 'fry', 'bake'] }, { k: 'mash', n: 3 }] },
   { id: 'tomatosoup', n: ['Tomatsoppa med bröd', 'Tomato soup & bread'], icon: '🍅', price: 130, patience: 200, w: 2, tier: 1, lvl: 7,
     req: [{ k: 'sauce', n: 6, cooked: ['fry', 'boil', 'bake'] }, { k: 'breadslice', n: 1 }] },
   { id: 'meatballpasta', n: ['Spaghetti & köttbullar', 'Spaghetti & meatballs'], icon: '🍝', price: 190, patience: 250, w: 2, tier: 1, lvl: 8,
@@ -81,7 +81,7 @@ export const RECIPES = [
   { id: 'vegwok', n: ['Grönsakswok', 'Veggie wok'], icon: '🥢', price: 210, patience: 240, w: 2, tier: 3, lvl: 15,
     req: [{ k: 'paprikastrip', n: 3, cooked: ['fry'] }, { k: 'carrotcoin', n: 3, cooked: ['fry', 'boil'] }, { k: 'broccoli', n: 2, cooked: ['fry', 'boil'] }, { k: 'mushroomslice', n: 2, cooked: ['fry'] }] },
   { id: 'surfturf', n: ['Biff & räkor de luxe', 'Surf & turf de luxe'], icon: '🦐', price: 320, patience: 280, w: 2, tier: 3, lvl: 16,
-    req: [{ k: 'steak', n: 1, cooked: PAN }, { k: 'shrimp', n: 3, cooked: ['fry', 'boil'] }, { k: 'broccoli', n: 2, cooked: ['boil', 'fry'] }, { k: 'lemonslice', n: 1 }] },
+    req: [{ k: 'steak', n: 1, cooked: PAN }, { k: 'shrimp', n: 3, cooked: ['boil', 'fry'] }, { k: 'broccoli', n: 2, cooked: ['boil', 'fry'] }, { k: 'lemonslice', n: 1 }] },
 ];
 export const menuFor = (tier, lvl) => RECIPES.filter(r => r.tier <= tier && r.lvl <= lvl);
 export const RECIPE_BY_ID = Object.fromEntries(RECIPES.map(r => [r.id, r]));
@@ -98,18 +98,18 @@ const GARNISH = new Set(['ketchupblob', 'mustardblob', 'jamblob', 'lemonslice', 
 export function judge(contents, recipe) {
   const used = new Set(); let quality = 0, qn = 0; const missing = [];
   for (const q of recipe.req) {
-    const unit = q.unit || 1; let have = 0;
+    const unit = q.unit || 1; let have = 0, raw = 0, burnt = 0, wrong = 0;
     for (const e of contents) {
       if (e.kind !== q.k || used.has(e)) continue;
       const lo = Math.min(e.cookA, e.cookB), hi = Math.max(e.cookA, e.cookB);
-      if (hi >= COOK.burnt) continue;
-      if (q.cooked) { if (lo < 0.82 || !q.cooked.includes(METHODS[e.method])) continue; }
+      if (hi >= COOK.burnt) { burnt++; continue; }
+      if (q.cooked) { if (lo < 0.82) { raw++; continue; } if (!q.cooked.includes(METHODS[e.method])) { wrong++; continue; } }
       if (have >= q.n * unit) break;
       used.add(e); have++;
       quality += !q.cooked ? 1 : hi <= COOK.perfectMax && lo >= COOK.done ? 1 : lo < COOK.done ? 0.7 : 0.55; qn++;
     }
     const got = Math.floor(have / unit);
-    if (got < q.n) missing.push([q.k, got, q.n]);
+    if (got < q.n) missing.push([q.k, got, q.n, Math.floor(raw / unit), Math.floor(burnt / unit), Math.floor(wrong / unit)]);
   }
   let junk = 0; for (const e of contents) if (!used.has(e) && e.kind !== 'noodle' && !GARNISH.has(e.kind)) junk++;
   return { ok: missing.length === 0, missing, quality: qn ? quality / qn : 0, junk };

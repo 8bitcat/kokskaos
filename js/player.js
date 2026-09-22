@@ -4,6 +4,7 @@ import * as THREE from '../vendor/three.module.js';
 import { PLAYER, GROUPS, HOLD, ROOM } from './config.js';
 import { audio } from './audio.js';
 
+const EMPTY_KEYS = new Set();
 export class LocalPlayer {
   constructor(R, world, canvas, spawn) {
     this.R = R; this.world = world; this.canvas = canvas;
@@ -37,7 +38,7 @@ export class LocalPlayer {
     });
     cv.addEventListener('wheel', (e) => { if (this.locked) this.reachOff = THREE.MathUtils.clamp(this.reachOff - Math.sign(e.deltaY) * 0.09, -1.2, 1.2); e.preventDefault(); }, { passive: false });
     window.addEventListener('keydown', (e) => {
-      if (!this.locked || e.repeat) return;
+      if (!this.locked || e.repeat || this.frozen) return;
       this.keys.add(e.code);
       if (e.code === 'KeyQ') this.latch[0] = !this.latch[0];
       else if (e.code === 'KeyE') this.latch[1] = !this.latch[1];
@@ -54,7 +55,7 @@ export class LocalPlayer {
   bonk(dx, dz, power) { this.vel.x += dx * 5 * power; this.vel.z += dz * 5 * power; this.vel.y = Math.max(this.vel.y, 2.2 * power); this.dizzy = 1; this.shake = 0.6; }
 
   update(dt, others) {
-    const k = this.keys, P = PLAYER;
+    const k = this.frozen ? EMPTY_KEYS : this.keys, P = PLAYER;   // frozen = the notebook is open
     if (this.charge >= 0) this.charge += dt;
     this.dizzy = Math.max(0, this.dizzy - dt * 0.55); this.shake = Math.max(0, this.shake - dt * 2);
     this.crouch = k.has('ControlLeft') || k.has('KeyC');

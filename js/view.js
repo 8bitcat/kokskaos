@@ -145,7 +145,8 @@ export class View {
     for (const l of svc.labels) {
       const it = this.items.get(l.id); if (!it) continue;
       const rec = l.r ? RECIPE_BY_ID[l.r] : null;
-      const text = l.ok ? `${rec.icon} ✔` : rec ? `${rec.icon} ` + l.m.map(m => `${ITEMS[m[0]].n[this.lang === 'en' ? 1 : 0]} ${m[1]}/${m[2]}`).join(' · ') : '?';
+      const li0 = this.lang === 'en' ? 1 : 0, why = (m) => { const r = []; if (m[3]) r.push(m[3] + (li0 ? ' raw' : ' rå')); if (m[4]) r.push(m[4] + (li0 ? ' burnt' : ' bränd')); if (m[5]) r.push(li0 ? 'wrong method' : 'fel tillagning'); return r.length ? ` (${r.join(', ')})` : ''; };
+      const text = l.ok ? `${rec.icon} ✔` : rec ? `${rec.icon} ` + l.m.map(m => { const q = rec.req.find(r => r.k === m[0]), d = ITEMS[m[0]]; return `${(q && q.cooked && d.cookedName ? d.cookedName : d.n)[li0]} ${m[1]}/${m[2]}${why(m)}`; }).join(' · ') : (li0 ? 'no matching order' : 'ingen beställning på detta');
       let lb = this.labels.get(l.id);
       if (!lb) { const cv = document.createElement('canvas'); cv.width = 512; cv.height = 96; const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true })); sprite.scale.set(1.3, 0.245, 1); sprite.renderOrder = 20; this.scene.add(sprite); lb = { sprite, cv, tex, text: '' }; this.labels.set(l.id, lb); }
       if (lb.text !== text) {

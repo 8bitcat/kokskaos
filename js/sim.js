@@ -96,7 +96,7 @@ export class Sim {
   }
   despawn(ent, fx) {
     if (!this.ents.has(ent.id) || ent.fixture) return;
-    if (ent.heldBy) this.release(ent.heldBy.p, ent.heldBy.h);
+    if (ent.heldBy) this.unhold(ent);
     for (const c of ent.cols) this.colOwner.delete(c.handle);
     this.world.removeRigidBody(ent.body);
     this.ents.delete(ent.id); this.itemCount--; ent.dead = true;
@@ -150,7 +150,7 @@ export class Sim {
     const body = this.world.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(sp[0], sp[1] + PLAYER.halfHeight + PLAYER.radius, sp[2]));
     const col = this.world.createCollider(R.ColliderDesc.capsule(PLAYER.halfHeight, PLAYER.radius).setCollisionGroups(GROUPS.player).setFriction(0.2)
       .setActiveEvents(R.ActiveEvents.COLLISION_EVENTS), body);
-    const hand = () => ({ ent: null, local: V(), relPos: V(), relRot: Q(), reach: PLAYER.reachDefault, off0: 0, stuck: 0, tryT: 0, lat: 0, pos: V(), was: false });
+    const hand = () => ({ ent: null, local: V(), relPos: V(), relRot: Q(), reach: PLAYER.reachDefault, off0: 0, stuck: 0, tryT: 0, lat: 0, pos: V(), was: false, extra: [] });
     const p = { id, body, col, pos: new THREE.Vector3(sp[0], sp[1], sp[2]), yaw: 0, pitch: 0, crouch: false, grip: [false, false], reachOff: 0, wristP: 0, wristR: 0,
       hands: [hand(), hand()], bonkT: 0, name: info.name, color: info.color };
     body.userData = { player: p }; this.colOwner.set(col.handle, { player: p });
@@ -170,6 +170,8 @@ export class Sim {
   eyeOf(p, out) { return out.set(p.pos.x, p.pos.y + (p.crouch ? PLAYER.eyeCrouch : PLAYER.eye), p.pos.z); }
   dirOf(p, out) { const cp = Math.cos(p.pitch); return out.set(-Math.sin(p.yaw) * cp, Math.sin(p.pitch), -Math.cos(p.yaw) * cp); }
   handQuat(p, out) { _eu.set(p.wristP, p.yaw, p.wristR, 'YXZ'); return out.setFromEuler(_eu); }
+  // the hand sits `reach` metres straight ahead (horizontally); pitch sets its height. Looking down = a straight chop, not an arc.
+  handPos(p, reach, out) { const eyeY = p.pos.y + (p.crouch ? PLAYER.eyeCrouch : PLAYER.eye); return out.set(p.pos.x - Math.sin(p.yaw) * reach, Math.max(0.04, eyeY + reach * Math.tan(clamp(p.pitch, -1.15, 1.15))), p.pos.z - Math.cos(p.yaw) * reach); }
 
   rayHit(eye, dir, p, max) {
     const hit = this.world.castRay(new this.R.Ray(eye, dir), max, true, 0, GROUPS.qGrab, undefined, p.body, (col) => {
@@ -202,25 +204,67 @@ export class Sim {
     if (ent.locked) return false;
     const other = p.hands[1 - h];
     if (other.ent === ent && !ent.fixture) return false;
-    if (ent.heldBy && !ent.fixture) this.release(ent.heldBy.p, ent.heldBy.h);      // steal!
+    if (ent.heldBy && !ent.fixture) this.unhold(ent);      // steal!
     const hitP = _c.copy(eye).addScaledVector(best.dir || dir, best.t);
     hand.ent = ent; hand.stuck = 0; hand.off0 = p.reachOff; hand.lat = 0;
-    hand.reach = clamp(_d.copy(hitP).sub(eye).dot(dir), PLAYER.reachMin, PLAYER.reachMax);
+    hand.reach = clamp(_d.copy(hitP).sub(eye).dot(_e.set(-Math.sin(p.yaw), 0, -Math.cos(p.yaw))), PLAYER.reachMin, PLAYER.reachMax);
     hand.local.copy(hitP).sub(ent.pos).applyQuaternion(_q1.copy(ent.rot).invert());
     if (!ent.fixture) {
       ent.heldBy = { p, h }; this.setGroups(ent, GROUPS.held);
-      const Hp = _e.copy(eye).addScaledVector(dir, hand.reach), Qh = this.handQuat(p, _q2), inv = _q3.copy(Qh).invert();
+      const Hp = this.handPos(p, hand.reach, _e), Qh = this.handQuat(p, _q2), inv = _q3.copy(Qh).invert();
       hand.relPos.copy(ent.pos).sub(Hp).applyQuaternion(inv);
       hand.relRot.copy(inv).multiply(ent.rot);
+      // tools snap into a sensible grip: knives/spatulas point forward, pans hang off their handle, containers level out
+      const g = ent.def.grip;
+      if (g) {
+        if (g === 'up') { _a.set(1, 0, 0).applyQuaternion(ent.rot); _q1.setFromAxisAngle(AXES.y, Math.atan2(-_a.z, _a.x)); hand.relRot.copy(inv).multiply(_q1); }
+        else hand.relRot.setFromAxisAngle(AXES.y, g === 'fwd' ? Math.PI / 2 : -Math.PI / 2);
+        if (ent.def.hold) hand.local.set(ent.def.hold[0], ent.def.hold[1], ent.def.hold[2]);
+        hand.relPos.copy(hand.local).applyQuaternion(hand.relRot).negate();
+      }
       ent.floorT = 0;
+      if (this.isBit(ent)) { this.setGroups(ent, GROUPS.heldBits); this.gather(p, h, ent.pos, HOLD.gatherR, 0.08); }
     } else ent.heldBy = { p, h };
     ent.body.wakeUp();
     this.sfx('pop', ent.pos, 0.35, 1.5);
     return true;
   }
+  // ---- handfuls: small loose food bits (potato sticks, slices, rings, blobs...). Never tools, pans, pots or whole ingredients.
+  isBit(e) { const d = e.def; return !!(d && d.food && !d.container && !d.fragile && !e.chain && !e.fixture && e.bound <= 0.07 && d.mass <= 0.065); }
+  gather(p, h, at, r, dy) {
+    const hand = p.hands[h], main = hand.ent; if (!main || !this.isBit(main)) return 0;
+    const kinds = new Set([main.kind]); for (const x of hand.extra) kinds.add(x.ent.kind);
+    const near = [];
+    for (const e of this.ents.values()) {
+      if (e === main || e.heldBy || e.locked || e.dead || !kinds.has(e.kind) || !this.isBit(e)) continue;
+      const dx = e.pos.x - at.x, dz = e.pos.z - at.z, ddy = e.pos.y - at.y;
+      if (Math.abs(ddy) < dy && dx * dx + dz * dz < r * r) near.push([dx * dx + dz * dz, e]);
+    }
+    near.sort((a, b) => a[0] - b[0]);
+    let added = 0; for (const [, e] of near) { if (!this.addBit(p, h, e)) break; added++; }
+    if (added) this.sfx('pop', at, 0.3, 1.9);
+    return added;
+  }
+  addBit(p, h, e) {
+    const hand = p.hands[h]; if (hand.extra.length >= HOLD.handful - 1) return false;
+    const inv = this.handQuat(p, Q()).invert(), k = hand.extra.length + 1, a = k * 2.4, r = 0.026 + 0.011 * Math.sqrt(k);
+    // pile the pieces in a little heap around the first one (hand space: x right, y up, z back)
+    const relPos = hand.relPos.clone().add(V().set(Math.cos(a) * r, 0.012 + 0.016 * Math.floor(k / 5), Math.sin(a) * r * 0.8));
+    e.heldBy = { p, h, extra: true }; this.setGroups(e, GROUPS.heldBits); e.floorT = 0; e.body.wakeUp();
+    hand.extra.push({ ent: e, relPos, relRot: inv.multiply(e.rot) });
+    return true;
+  }
+  // let go of one entity wherever it is held (a single handful piece, or the whole hand's grip)
+  unhold(e) {
+    const hb = e.heldBy; if (!hb) return;
+    if (hb.extra) { const x = hb.p.hands[hb.h].extra, i = x.findIndex(v => v.ent === e); if (i >= 0) x.splice(i, 1); e.heldBy = null; if (!e.dead) this.setGroups(e, GROUPS.item); }
+    else this.release(hb.p, hb.h);
+  }
   release(p, h) {
     const hand = p.hands[h], ent = hand.ent; if (!ent) return;
     hand.ent = null;
+    for (const x of hand.extra) if (x.ent.heldBy && x.ent.heldBy.p === p) { x.ent.heldBy = null; if (!x.ent.dead) this.setGroups(x.ent, GROUPS.item); }
+    hand.extra.length = 0;
     if (ent.heldBy && ent.heldBy.p === p && ent.heldBy.h === h) { ent.heldBy = null; if (!ent.fixture && !ent.dead) this.setGroups(ent, GROUPS.item); }
     const o = p.hands[1 - h]; if (o.ent === ent && ent.fixture) ent.heldBy = { p, h: 1 - h };
   }
@@ -229,11 +273,13 @@ export class Sim {
     const dir = this.dirOf(p, _b).clone();
     for (let h = 0; h < 2; h++) {
       const ent = p.hands[h].ent; if (!ent || ent.fixture) { if (ent) this.release(p, h); continue; }
+      const bits = p.hands[h].extra.map(x => x.ent);
       this.release(p, h);
       const m = ent.body.mass(), sp = (HOLD.throwMin + (HOLD.throwMax - HOLD.throwMin) * clamp(power, 0, 1)) / (1 + m * 0.16);
       ent.body.setLinvel({ x: dir.x * sp, y: dir.y * sp + 1.2, z: dir.z * sp }, true);
       ent.body.setAngvel({ x: (this.rand() - 0.5) * 8, y: (this.rand() - 0.5) * 8, z: (this.rand() - 0.5) * 8 }, true);
       ent.thrownBy = p.id; ent.thrownT = this.time;
+      for (const b of bits) if (!b.dead) { const f = 0.85 + this.rand() * 0.3; b.body.setLinvel({ x: dir.x * sp * f + (this.rand() - 0.5) * 0.8, y: dir.y * sp * f + 1.2 + this.rand() * 0.4, z: dir.z * sp * f + (this.rand() - 0.5) * 0.8 }, true); b.thrownBy = p.id; b.thrownT = this.time; }
       this.sfx('whoosh', ent.pos, 0.8);
     }
   }
@@ -263,7 +309,7 @@ export class Sim {
       const gp = _b.copy(hand.local).applyQuaternion(ent.rot).add(ent.pos);
       hand.pos.copy(gp);
       if (ent.fixture) {
-        const Hp = _c.copy(eye).addScaledVector(dir, reach), err = _d.copy(Hp).sub(gp), dist = err.length();
+        const Hp = this.handPos(p, reach, _c), err = _d.copy(Hp).sub(gp), dist = err.length();
         if (dist > HOLD.fixtureBreak) { this.release(p, h); continue; }
         const fx = ent.fixture, body = ent.body;
         if (fx.type === 'knob') {
@@ -280,7 +326,7 @@ export class Sim {
       }
       // free body: velocity-drive its pose to follow the hand frame
       hand.lat += ((both ? (h ? 1 : -1) * PLAYER.handSide : 0) - hand.lat) * Math.min(1, dt * 6);
-      const Hp = _c.copy(eye).addScaledVector(dir, reach).addScaledVector(right, hand.lat);
+      const Hp = this.handPos(p, reach, _c).addScaledVector(right, hand.lat);
       const tp = _d.copy(hand.relPos).applyQuaternion(Qh).add(Hp), body = ent.body, m = body.mass();
       if (tp.y < 0.04) tp.y = 0.04;
       const err = tp.sub(ent.pos), dist = err.length();
@@ -295,6 +341,18 @@ export class Sim {
         let w = 2 * Math.acos(clamp(qe.w, -1, 1)) * HOLD.angGain / (1 + m * 0.1); if (w > HOLD.maxAngSpeed) w = HOLD.maxAngSpeed;
         body.setAngvel({ x: qe.x / s * w, y: qe.y / s * w, z: qe.z / s * w }, true);
       } else body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+      if (hand.extra.length || this.isBit(ent)) {
+        for (let i = hand.extra.length - 1; i >= 0; i--) {
+          const x = hand.extra[i], e = x.ent;
+          if (e.dead || !e.heldBy || e.heldBy.p !== p) { hand.extra.splice(i, 1); continue; }
+          const t = _e.copy(x.relPos).applyQuaternion(Qh).add(Hp); if (t.y < 0.04) t.y = 0.04;
+          const er = t.sub(e.pos);
+          if (er.lengthSq() > 0.25) { x.stuck = (x.stuck || 0) + dt; if (x.stuck > 0.4) { this.unhold(e); continue; } } else x.stuck = 0;   // snagged for a while: that piece falls out
+          er.multiplyScalar(HOLD.linGain); const s2 = er.length(); if (s2 > HOLD.maxSpeed) er.multiplyScalar(HOLD.maxSpeed / s2);
+          e.body.setLinvel({ x: er.x, y: er.y, z: er.z }, true); e.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+        }
+        if ((this.tick + h) % 3 === 0 && hand.extra.length < HOLD.handful - 1) this.gather(p, h, ent.pos, HOLD.sweepR, 0.07);   // sweeping over more
+      }
       // swinging cookware into a colleague = bonk
       if (sp > 3.2) for (const o of this.players.values()) {
         if (o === p || o.bonkT > 0) continue;
@@ -510,7 +568,9 @@ export class Sim {
         if (_a.y < ct.y0 - 0.015 || _a.y > ct.h) continue;
         if (ct.r ? _a.x * _a.x + _a.z * _a.z < ct.r * ct.r : Math.abs(_a.x) < ct.bx && Math.abs(_a.z) < ct.bz) {
           if (ct.pizza) { e.onPizza = c; continue; }
-          if (!e.inC || (ct.heat && !e.inC.def.container.heat) || (e.inC.def.container.small && !ct.small)) { e.inC = c; e.inY = _a.y; }
+          // prefer: a heated vessel over a cold one, a real container over a scoop, then the floor closest under the food (stacked pans)
+          const cur = e.inC && e.inC.def.container;
+          if (!cur || (ct.heat && !cur.heat) || (cur.small && !ct.small) || (!!ct.heat === !!cur.heat && !!ct.small === !!cur.small && _a.y < e.inY)) { e.inC = c; e.inY = _a.y; }
           c.count++;
         }
       }

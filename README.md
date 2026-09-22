@@ -24,7 +24,13 @@ URL-parametrar: `?lang=sv|en`, `?join=KOD`, `?rest=dump|bistro|grand|star`, `?ch
   potatisstöt mosar, köttklubba plattar schnitzel, kavel plattar pizzadeg, rivjärn river ost, flaskor sprutar,
   ugnen smälter ihop pizzabotten + sås + ost till pizza, smet blir pannkaka i het panna, ägg spricker.
 - **Servering:** dra i spaken vid luckan → beställningar. Ställ tallriken på luckan; rätt innehåll ⇒ servitör hämtar.
-  Gäster blir argare ju längre de väntar.
+  Skylten över tallriken säger vad som saknas (rå / bränd / fel tillagning). Gäster blir argare ju längre de väntar.
+- **Kockens anteckningar (Tab):** en handskriven receptbok med foton ur spelet (`img/recipes`, `img/howto`,
+  genererade av `tools/photos.mjs`), steg-för-steg-instruktioner som genereras ur receptdata (`js/cookbook.js`)
+  och klotter/post-it-lappar från `js/cookbook_text.js`. Samma lappar sitter på väggarna, plus en menytavla vid luckan.
+- **Grepp:** verktyg snäpper till ett vettigt grepp när man tar dem (`grip`/`hold` i föremålsdatan): knivar och
+  spadar pekar framåt, pannor hänger i handtaget, tallrikar/grytor rätas upp. Handen ligger `reach` meter rakt fram
+  och blicken styr höjden – att titta ner snabbt är alltså ett rakt hugg.
 
 ## Kod
 
