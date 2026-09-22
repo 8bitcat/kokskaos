@@ -6,11 +6,11 @@ const browser = await chromium.launch({ executablePath: exe, headless: true, arg
 const logs = [];
 const mk = async (tag) => { const p = await browser.newPage({ viewport: { width: 960, height: 540 } }); if (process.env.SHIM) await p.route('**/js/avatars.js', async (route) => { const r = await route.fetch(); let t = await r.text(); if (!/export const EMOTES/.test(t)) t += String.fromCharCode(10) + 'export const EMOTES = [];'; await route.fulfill({ response: r, body: t }); }); p.on('console', m => { const t = m.text(); if (!/AudioContext|flatShading|nominal range/.test(t)) logs.push(`[${tag}:${m.type()}] ${t}`); }); p.on('pageerror', e => logs.push(`[${tag}:pageerror] ${e.message}\n${(e.stack || '').split('\n').slice(0, 5).join('\n')}`)); return p; };
 const host = await mk('host');
-await host.goto('http://localhost:8123/?test=host&lang=sv' + (process.env.EXTRA || '')); await host.waitForFunction(() => window.game && window.game.player && window.game.last, null, { timeout: 90000 });
+await host.goto((process.env.URL || 'http://localhost:8123/') + '?test=host&lang=sv' + (process.env.EXTRA || '')); await host.waitForFunction(() => window.game && window.game.player && window.game.last, null, { timeout: 90000 });
 const code = await host.evaluate(() => ({ code: game.code, online: game.net.online })); logs.push('[mp] host ' + JSON.stringify(code));
 if (code.online) {
   const cl = await mk('client');
-  await cl.goto(`http://localhost:8123/?test=join&join=${code.code}&lang=en`);
+  await cl.goto(`${process.env.URL || 'http://localhost:8123/'}?test=join&join=${code.code}&lang=en`);
   try { await cl.waitForFunction(() => window.game && window.game.player && window.game.last, null, { timeout: 60000 }); } catch (e) { logs.push('[mp] client failed to start'); }
   await cl.waitForTimeout(4000);
   logs.push('[mp] client ' + JSON.stringify(await cl.evaluate(() => ({ id: game.localId, items: game.view.items.size, players: game.view.players.size, rest: game.rest.id, fixtures: game.K.fixtures.length, roster: [...game.roster.values()].map(r => r.name + ':' + JSON.stringify(r.look)) }))));
