@@ -1,0 +1,33 @@
+// Kökskaos — UI strings (svenska / English)
+export const STR = {
+  sv: {
+    tagline: 'Fysikkaos i restaurangköket — upp till 9 kockar',
+    name: 'Ditt namn', host: 'Öppna ett kök', join: 'Gå med', code: 'Kökskod', solo: 'Spela själv', color: 'Färg',
+    loading: 'Värmer ugnarna…', connecting: 'Ansluter…', hosting: 'Öppnar köket…', joinFail: 'Kunde inte ansluta till köket. Kolla koden!', full: 'Köket är fullt (max 9 kockar).',
+    offline: 'Ingen kontakt med nätverket — du spelar själv.', hostLeft: 'Värden stängde köket.', clickToPlay: 'Klicka för att laga mat', paused: 'Paus',
+    resume: 'Fortsätt', startService: 'Starta servering', quit: 'Lämna köket', kitchenCode: 'Kökskod', chefs: 'kockar', coins: 'Kassa', time: 'Tid',
+    freeplay: 'Fri lek — dra i den röda spaken vid luckan för att starta serveringen', orders: 'Beställningar', table: 'Bord',
+    t_start: 'Serveringen är igång!', t_order: 'Ny beställning', t_served: 'Serverat', t_timeout: 'Gästen tröttnade', t_hitwaiter: 'Du träffade servitören!',
+    resultTitle: 'Serveringen är slut!', served: 'Serverade', failed: 'Missade', best: 'Rekord', recipes: 'Receptbok (Tab)', joined: 'kom in i köket', left: 'lämnade köket',
+    done: ['rå', 'tillagas…', 'perfekt!', 'för mycket', 'BRÄND'], hot: 'het', water: 'vatten', boiling: 'kokar',
+    controls: [['WASD', 'gå'], ['Shift', 'spring'], ['Mellanslag', 'hoppa'], ['Ctrl / C', 'huka'], ['Vänster / höger musknapp', 'vänster / höger hand — håll in för att greppa'], ['Q / E', 'lås greppet (vänster / höger)'],
+      ['Mushjul', 'dra närmare / skjut bort'], ['R + mus', 'vrid handleden (häll, vänd, tippa)'], ['T', 'räta upp'], ['F / mushjulsklick', 'kasta (håll in för kraft)'], ['1–9, 0', 'emotes (dansa, skaka rumpa …)'], ['Tab', 'receptbok'], ['H', 'visa / göm hjälp'], ['M', 'ljud av / på'], ['Esc', 'meny']],
+    howto: ['Allt är fysik: dra upp luckor, vrid vred åt höger, lyft kranspaken, fäll mixerspaken.', 'Hacka genom att svinga kniven ner i råvaran. Potatis → stavar → fritera = pommes.', 'Fyll grytan under kranen, koka upp på spisen, lägg i spaghetti.',
+      'Stek biff och burgare på båda sidor — vänd med ett kast eller stekspaden.', 'Lägg upp på tallrik och ställ den på serveringsluckan. Servitören hämtar när rätten stämmer.', 'Släng bränd mat i de gröna tunnorna.', 'Fler knep: locket får vattnet att koka snabbare, måttkannan bär vatten, potatisstöten gör mos av kokt potatis, köttklubban plattar till schnitzel, kaveln plattar pizzadeg, rivjärnet river ost och flaskorna sprutar när du håller dem upp och ner.'],
+  },
+  en: {
+    tagline: 'Physics chaos in a restaurant kitchen — up to 9 chefs',
+    name: 'Your name', host: 'Open a kitchen', join: 'Join', code: 'Kitchen code', solo: 'Play solo', color: 'Colour',
+    loading: 'Heating the ovens…', connecting: 'Connecting…', hosting: 'Opening the kitchen…', joinFail: 'Could not reach that kitchen. Check the code!', full: 'The kitchen is full (max 9 chefs).',
+    offline: 'No network — you are playing solo.', hostLeft: 'The host closed the kitchen.', clickToPlay: 'Click to start cooking', paused: 'Paused',
+    resume: 'Resume', startService: 'Start service', quit: 'Leave kitchen', kitchenCode: 'Kitchen code', chefs: 'chefs', coins: 'Till', time: 'Time',
+    freeplay: 'Free play — pull the red lever by the pass to start the service', orders: 'Orders', table: 'Table',
+    t_start: 'Service has started!', t_order: 'New order', t_served: 'Served', t_timeout: 'A guest gave up', t_hitwaiter: 'You hit the waiter!',
+    resultTitle: 'Service is over!', served: 'Served', failed: 'Missed', best: 'Best', recipes: 'Recipe book (Tab)', joined: 'entered the kitchen', left: 'left the kitchen',
+    done: ['raw', 'cooking…', 'perfect!', 'overdone', 'BURNT'], hot: 'hot', water: 'water', boiling: 'boiling',
+    controls: [['WASD', 'move'], ['Shift', 'run'], ['Space', 'jump'], ['Ctrl / C', 'crouch'], ['Left / right mouse button', 'left / right hand — hold to grab'], ['Q / E', 'lock grip (left / right)'],
+      ['Mouse wheel', 'pull closer / push away'], ['R + mouse', 'turn your wrist (pour, flip, tip)'], ['T', 'level out'], ['F / wheel click', 'throw (hold for power)'], ['1–9, 0', 'emotes (dance, butt shake …)'], ['Tab', 'recipe book'], ['H', 'show / hide help'], ['M', 'mute'], ['Esc', 'menu']],
+    howto: ['Everything is physics: pull doors open, turn knobs to the right, lift the tap lever, flip the blender switch.', 'Chop by swinging the knife down into the food. Potato → sticks → deep-fry = french fries.', 'Fill the pot under the tap, bring it to the boil on the hob, drop in spaghetti.',
+      'Fry steaks and patties on both sides — flip them with a toss or the spatula.', 'Plate up and put the plate on the pass. A waiter collects it when the dish is right.', 'Throw burnt food in the green bins.', 'More tricks: a lid makes water boil faster, the jug carries water, the masher turns boiled potatoes into mash, the mallet flattens steak into schnitzel, the rolling pin flattens pizza dough, the grater grates cheese, and squeeze bottles squirt when held upside-down.'],
+  },
+};

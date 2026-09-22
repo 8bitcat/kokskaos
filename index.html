@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kökskaos</title>
+<meta name="description" content="Kökskaos — ett kaotiskt fysikbaserat restaurangkök för upp till 9 kockar.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍳</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud" style="display:none">
+  <div id="tickets"></div>
+  <div id="topright"><div id="till"><span>💰</span><b id="coins">0 kr</b></div><div id="clock"><span>⏱</span><b id="timer">–:––</b></div><div id="room"></div><div id="fps"></div></div>
+  <div id="freeplay"></div>
+  <div id="cross"></div>
+  <div id="tip"></div>
+  <div id="charge"><i></i></div>
+  <div id="wrist"><i></i></div>
+  <div id="toasts"></div>
+  <div id="help"></div>
+  <div id="book"></div>
+  <div id="result"></div>
+  <div id="emotes"></div>
+  <div id="lockmsg"></div>
+</div>
+
+<div id="pause" style="display:none"><div class="panel">
+  <h2 id="ptitle"></h2>
+  <p><span id="pcodel"></span>: <b id="pcode" class="code"></b></p>
+  <button id="resume" class="btn big"></button>
+  <button id="startsvc" class="btn"></button>
+  <button id="pwardrobe" class="btn"></button>
+  <button id="quit" class="btn ghost"></button>
+</div></div>
+
+<div id="dialog" style="display:none"></div>
+
+<div id="menu"><div class="panel">
+  <h1>🍳 KÖKSKAOS</h1>
+  <p id="tagline"></p>
+  <label id="lname" for="name"></label>
+  <input id="name" maxlength="14" autocomplete="off">
+  <div id="buttons" class="disabled">
+    <button id="bhost" class="btn big"></button>
+    <div class="row"><input id="code" maxlength="4" autocomplete="off" spellcheck="false"><button id="bjoin" class="btn"></button></div>
+    <button id="bsolo" class="btn ghost"></button>
+  </div>
+  <p id="status"></p>
+  <div class="foot"><button id="langbtn" class="link"></button><span id="ver"></span></div>
+</div>
+<div class="panel career" id="career"></div>
+</div>
+
+<script src="vendor/peerjs.min.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
