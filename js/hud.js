@@ -6,6 +6,12 @@ import { buildBook } from './cookbook.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+// how far a knob is turned (0..1), read from the rendered pose relative to its rest orientation (axis = local z)
+function knobValue(it) {
+  const r = it.fixture.q, q = it.group.quaternion;
+  const z = r.w * q.z - r.x * q.y + r.y * q.x - r.z * q.w, w = r.w * q.w + r.x * q.x + r.y * q.y + r.z * q.z;
+  return Math.max(0, Math.min(1, (2 * Math.atan2(z, w)) / it.fixture.limits[0]));
+}
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 export class Hud {
@@ -87,6 +93,10 @@ export class Hud {
     else if (kind === 'served') { text = `✅ ${S.t_served}: ${rec.icon} ${rec.n[li]}  +${b} kr`; cls = 'good'; }
     else if (kind === 'timeout') { text = `😠 ${S.t_timeout}: ${rec.icon} ${rec.n[li]}  −30 kr`; cls = 'bad'; }
     else if (kind === 'hitwaiter') { text = `🤕 ${S.t_hitwaiter}  −5 kr`; cls = 'bad'; }
+    else if (kind === 'supply') { text = li ? `📞 Order placed: ${a} items${b ? ` (−${b} kr)` : ''} — delivery on its way` : `📞 Beställt: ${a} råvaror${b ? ` (−${b} kr)` : ''} — leveransen är på väg`; cls = 'good'; }
+    else if (kind === 'delivered') text = li ? '📦 Delivery! The crate is on the DELIVERY spot' : '📦 Leverans! Lådan står på LEVERANS-rutan';
+    else if (kind === 'nomoney') { text = li ? `💸 The till can't cover ${a} kr` : `💸 Kassan räcker inte till ${a} kr`; cls = 'bad'; }
+    else if (kind === 'supplyfail') { text = li ? '📞 Too many deliveries on the way — wait a bit' : '📞 För många leveranser på väg — vänta lite'; cls = 'bad'; }
     else if (kind === 'text') text = esc(a);
     const t = el('div', 'toast ' + cls, text); $('toasts').appendChild(t);
     setTimeout(() => t.classList.add('out'), 3600); setTimeout(() => t.remove(), 4200);
@@ -97,7 +107,12 @@ export class Hud {
     cross.classList.toggle('can', !!pick && !holding); cross.classList.toggle('hold', !!holding);
     if (!pick) { tip.style.display = 'none'; } else {
       const it = pick.item, S = this.S, li = this.lang === 'en' ? 1 : 0; let html = '';
-      if (it.fixture) html = `<b>${esc(it.fixture.n ? it.fixture.n[li] : '')}</b>`;
+      if (it.fixture) {
+        const fx = it.fixture; html = `<b>${esc(fx.n ? fx.n[li] : '')}</b>`;
+        if (fx.where) html += ` · ${esc(fx.where[li])}`;
+        if (fx.type === 'knob') { const v = knobValue(it); html += v > 0.04 ? ` <span class="d3">${li ? 'ON' : 'PÅ'} ${Math.round(v * 100)}%</span>` : ` <span class="d0">${li ? 'OFF' : 'AV'}</span>`; }
+        if (fx.hint) html += `<br><small>${esc(fx.hint[li])}</small>`;
+      }
       else {
         html = `<b>${esc(itemName(it.def, this.lang, it.cookA, it.cookB))}</b>`;
         const d = doneness(it.def, it.cookA, it.cookB);

@@ -3,6 +3,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { COOK, SERVICE, GROUPS, ROOM } from './config.js';
 import { ITEMS, METHODS } from './items.js';
+import { SUPPLY, SUPPLY_MAX } from './supplier.js';
 
 // req: k = item kind, n = how many, cooked = allowed dominant methods (omit = served raw), unit = bodies per "one"
 // tier = first restaurant that serves it (0 Sunkhaket, 1 Kvarterskrogen, 2 Storköket, 3 Stjärnkrogen), lvl = chef level needed
@@ -123,7 +124,7 @@ export class Service {
     this.running = false; this.timeLeft = 0; this.coins = 0; this.served = 0; this.failed = 0; this.orders = []; this.nextOrder = 1; this.orderT = 0;
     this.labels = []; this.result = null; this.resultT = 0; this.players = 1; this.evalT = 0; this.leverArmed = true; this.dirty = true; this.best = 0;
     this.menu = RECIPES; this.mods = { patience: 1, pay: 1, interval: 1, maxOpen: 0, stars: 1 }; this.day = 1;
-    this.waiters = []; this.resultN = 0;
+    this.waiters = []; this.resultN = 0; this.deliveries = []; this.phoneArmed = true;
     const R = sim.R;
     K.waiterIdle.slice(0, 3).forEach((p, i) => {
       const body = sim.world.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(p[0], 0.9, p[1]));
@@ -168,6 +169,11 @@ export class Service {
     const lever = sim.fixtures.get(K.lever);
     if (lever.value > 0.8 && this.leverArmed && !this.running && !this.result) { this.leverArmed = false; sim.sfxBudget++; sim.sfx('lever', lever.pos, 1); this.start(sim.players.size); }
     if (lever.value < 0.3) this.leverArmed = true;
+    // lifting the wall phone's handset opens the order menu for whoever lifted it
+    const ph = K.phone && sim.fixtures.get(K.phone);
+    if (ph) { if (ph.value > 0.6 && this.phoneArmed && ph.heldBy) { this.phoneArmed = false; sim.sfxBudget++; sim.sfx('ding', ph.pos, 0.5, 1.7); this.hooks.shop?.(ph.heldBy.p.id); } if (ph.value < 0.25) this.phoneArmed = true; }
+    for (const d of this.deliveries) { d.t -= dt; if (d.t <= 0 && !d.crate) this.dropCrate(d); else if (d.crate && d.t <= -0.9) this.fillCrate(d); }
+    this.deliveries = this.deliveries.filter(d => !d.filled);
     if (this.result) { this.resultT -= dt; if (this.resultT <= 0) { this.result = null; this.dirty = true; } }
 
     if (this.running) {
@@ -191,6 +197,32 @@ export class Service {
     this.evalT -= dt;
     if (this.evalT <= 0) { this.evalT = 0.5; this.judgePass(); }
     this.updateWaiters(dt);
+  }
+  // ---- the wholesaler: validate, charge the till during service (free play is free), then a crate arrives
+  order(items, pid) {
+    if (!this.K.delivery || !items || typeof items !== 'object') return;
+    const list = []; let n = 0, cost = 0;
+    for (const s of SUPPLY) { const c = Math.max(0, Math.min(SUPPLY_MAX, Math.floor(+items[s.k] || 0))); if (c) { list.push([s.k, c]); n += c; cost += c * s.p; } }
+    if (!n || n > SUPPLY_MAX || this.deliveries.length >= 3) { this.hooks.toast?.('supplyfail'); return; }
+    if (this.running) { if (cost > this.coins) { this.hooks.toast?.('nomoney', cost); return; } this.coins -= cost; this.dirty = true; } else cost = 0;
+    list.sort((a, b) => (ITEMS[b[0]].fragile ? 1 : 0) - (ITEMS[a[0]].fragile ? 1 : 0));   // eggs at the bottom of the crate
+    this.deliveries.push({ t: 5, list, n });
+    this.hooks.sfx?.('ticket'); this.hooks.toast?.('supply', n, cost);
+  }
+  dropCrate(d) {
+    const sim = this.sim, D = this.K.delivery;
+    let busy = 0; for (const e of sim.ents.values()) if (e.kind === 'deliverycrate' && Math.hypot(e.pos.x - D.x, e.pos.z - D.z) < 1.4) busy++;
+    d.crate = sim.spawn('deliverycrate', [D.x + busy * 0.7, 0.8, D.z], null);
+    sim.sfxBudget += 2; sim.sfx('door', d.crate.pos, 1); sim.hooks.fx?.('poof', [D.x + busy * 0.7, 0.5, D.z]);
+    this.hooks.toast?.('delivered');
+  }
+  fillCrate(d) {
+    d.filled = true; const c = d.crate, sim = this.sim; if (!c || c.dead) return;
+    let i = 0;
+    for (const [k, cnt] of d.list) for (let j = 0; j < cnt; j++, i++) {
+      const layer = Math.floor(i / 12), col = i % 4, row = Math.floor(i / 4) % 3, yaw = (i * 2.39) % 6.283;
+      sim.spawn(k, [c.pos.x - 0.2 + col * 0.133, c.pos.y + 0.08 + layer * 0.09, c.pos.z - 0.12 + row * 0.12], { x: 0, y: Math.sin(yaw / 2), z: 0, w: Math.cos(yaw / 2) });
+    }
   }
   judgePass() {
     const sim = this.sim, zone = this.K.pass.zone, labels = [];

@@ -82,6 +82,24 @@ function floorTexture(a, b, n, grime) {
   return t;
 }
 
+// knob dial: OFF at 12 o'clock, a clockwise arc from pale yellow to deep red with flames growing towards max
+const DIAL_GEO = new THREE.PlaneGeometry(0.21, 0.21), DIAL_TEX = {};
+function dialTexture(lang) {
+  if (DIAL_TEX[lang]) return DIAL_TEX[lang];
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256; const g = cv.getContext('2d'), c = 128, R = 98;
+  g.fillStyle = 'rgba(28,30,36,0.9)'; g.beginPath(); g.arc(c, c, 126, 0, Math.PI * 2); g.fill();
+  const a0 = -Math.PI / 2, a1 = a0 + 2.4, N = 48;          // canvas y points down, so +angle = clockwise on screen
+  for (let i = 0; i < N; i++) { const t = i / N, a = a0 + (a1 - a0) * t; g.strokeStyle = `hsl(${52 - 52 * t}, 95%, ${62 - 16 * t}%)`; g.lineWidth = 14 + 20 * t; g.beginPath(); g.arc(c, c, R, a, a + (a1 - a0) / N + 0.012); g.stroke(); }
+  const ex = c + Math.cos(a1) * R, ey = c + Math.sin(a1) * R, tx = -Math.sin(a1), ty = Math.cos(a1);   // arrow head, pointing clockwise
+  g.fillStyle = '#c0180e'; g.beginPath(); g.moveTo(ex + tx * 30, ey + ty * 30); g.lineTo(ex - ty * 22, ey + tx * 22); g.lineTo(ex + ty * 22, ey - tx * 22); g.fill();
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  for (const [t, sz] of [[0.28, 26], [0.6, 36], [0.9, 48]]) { const a = a0 + (a1 - a0) * t; g.font = `${sz}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`; g.fillText('🔥', c + Math.cos(a) * (R + 4), c + Math.sin(a) * (R + 4)); }
+  g.fillStyle = '#fff'; g.fillRect(c - 3, 12, 6, 20);
+  g.font = 'bold 22px Fredoka, sans-serif'; g.fillText(lang === 'en' ? 'OFF' : 'AV', c - 34, 22);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  return (DIAL_TEX[lang] = tex);
+}
+
 // ==================================================================================================
 export function buildKitchen({ R, world, scene, sim, view, lang = 'sv', rest, up = {} }) {
   const L = (sv, en) => (lang === 'en' ? en : sv);
@@ -120,10 +138,16 @@ export function buildKitchen({ R, world, scene, sim, view, lang = 'sv', rest, up
     { g: 'cyl', r: 0.05, h: 0.012, p: [0, 0, 0.006], r3: [Math.PI / 2, 0, 0], c: C.steel },
     { g: 'box', sz: [0.014, 0.05, 0.012], p: [0, 0.02, 0.046], c: C.white },
   ];
-  const knob = (f, lx, ly, lz, color, role) => fixture(f, {
-    type: 'knob', lp: [lx, ly, lz], axis: 'z', limits: [-2.7, 0], mass: 0.3, damp: 6, role,
-    n: ['Vred', 'Knob'], col: [{ s: 'cyl', hh: 0.024, rad: 0.05, p: [0, 0, 0.024], r: [Math.PI / 2, 0, 0] }], parts: knobParts(color),
-  });
+  const knob = (f, lx, ly, lz, color, role, where) => {
+    const dial = new THREE.Mesh(DIAL_GEO, new THREE.MeshBasicMaterial({ map: dialTexture(lang), transparent: true, depthWrite: false }));
+    f.obj(dial, lx, ly, lz + 0.003);   // the dial picture behind the knob: OFF at the top, clockwise towards the big red flames = max
+    return fixture(f, {
+      type: 'knob', lp: [lx, ly, lz], axis: 'z', limits: [-2.4, 0], mass: 0.3, damp: 6, role, where,
+      n: [{ burner: 'Spisvred', oven: 'Ugnsvred', fryer: 'Fritösvred' }[role] || 'Vred', { burner: 'Burner knob', oven: 'Oven knob', fryer: 'Fryer knob' }[role] || 'Knob'],
+      hint: ['ta tag och dra musen åt höger = PÅ (medsols)', 'grab it and drag the mouse right = ON (clockwise)'],
+      col: [{ s: 'cyl', hh: 0.024, rad: 0.05, p: [0, 0, 0.024], r: [Math.PI / 2, 0, 0] }], parts: knobParts(color),
+    });
+  };
 
   // ================================================================ room shell
   const { hx, hz, wallH, diningDepth, passX } = ROOM, zN = -hz, zD = -hz - diningDepth;
@@ -216,7 +240,7 @@ export function buildKitchen({ R, world, scene, sim, view, lang = 'sv', rest, up
     const iw = w - 0.14, idp = D - 0.16, ih = 0.2;
     [0.665, 0.325].forEach((cy, i) => {
       fixture(f, {
-        type: 'slide', lp: [lx, cy, 0.02], axis: 'z', limits: [0, 0.52], mass: 3, damp: 9, role: 'drawer', n: ['Låda', 'Drawer'],
+        type: 'slide', lp: [lx, cy, 0.02], axis: 'z', limits: [0, 0.52], mass: 3, damp: 9, role: 'drawer', n: ['Låda', 'Drawer'], hint: ['dra ut', 'pull it out'],
         col: [{ s: 'box', hx: iw / 2, hy: 0.01, hz: idp / 2, p: [0, -ih / 2, 0] }, { s: 'box', hx: 0.012, hy: ih / 2, hz: idp / 2, p: [iw / 2, 0, 0] },
           { s: 'box', hx: 0.012, hy: ih / 2, hz: idp / 2, p: [-iw / 2, 0, 0] }, { s: 'box', hx: iw / 2, hy: ih / 2, hz: 0.012, p: [0, 0, -idp / 2] },
           { s: 'box', hx: w / 2 - 0.03, hy: 0.15, hz: 0.014, p: [0, 0.01, idp / 2 + 0.014] }, { s: 'box', hx: 0.12, hy: 0.018, hz: 0.025, p: [0, 0.03, idp / 2 + 0.05] }],
@@ -248,13 +272,13 @@ export function buildKitchen({ R, world, scene, sim, view, lang = 'sv', rest, up
       const flame = new THREE.Group();
       for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2, m = new THREE.Mesh(flameGeo, k % 2 ? flameMatA : flameMatB); m.position.set(Math.cos(a) * 0.085, 0.03, Math.sin(a) * 0.085); m.rotation.z = -Math.cos(a) * 0.5; m.rotation.x = Math.sin(a) * 0.5; flame.add(m); }
       flame.visible = false; f.obj(flame, lx + bx, top + 0.012, bz);
-      const kid = knob(f, lx + kx[i], 0.83, D / 2, C.black, 'burner');
+      const kid = knob(f, lx + kx[i], 0.83, D / 2, C.black, 'burner', [['bakre vänstra plattan', 'back-left burner'], ['främre vänstra plattan', 'front-left burner'], ['främre högra plattan', 'front-right burner'], ['bakre högra plattan', 'back-right burner']][i]);
       K.burners.push({ id: K.burners.length, pos: f.pt(lx + bx, top + 0.03, bz), knob: kid, flame });
     });
-    const ovenKnob = knob(f, lx, 0.83, D / 2, C.red, 'oven');
+    const ovenKnob = knob(f, lx, 0.83, D / 2, C.red, 'oven', ['ugnen', 'the oven']);
     const dw = w - 0.14;
     const door = fixture(f, {
-      type: 'hinge', lp: [lx, 0.2, D / 2], axis: 'x', limits: [0, 1.5], mass: 3.5, damp: 3.5, latch: { at: 0.22, to: 0, k: 40 }, role: 'ovendoor', n: ['Ugnslucka', 'Oven door'],
+      type: 'hinge', lp: [lx, 0.2, D / 2], axis: 'x', limits: [0, 1.5], mass: 3.5, damp: 3.5, latch: { at: 0.22, to: 0, k: 40 }, role: 'ovendoor', n: ['Ugnslucka', 'Oven door'], hint: ['dra ner i handtaget', 'pull down by the handle'],
       col: [{ s: 'box', hx: dw / 2, hy: 0.27, hz: 0.02, p: [0, 0.27, 0.02] }, { s: 'box', hx: dw / 2 - 0.08, hy: 0.018, hz: 0.03, p: [0, 0.47, 0.07] }],
       parts: [{ g: 'box', sz: [dw, 0.54, 0.04], p: [0, 0.27, 0.02], c: COL.steel }, { g: 'box', sz: [dw - 0.24, 0.26, 0.046], p: [0, 0.23, 0.02], c: 0x1b2026 },
         { g: 'cap', r: 0.018, len: dw - 0.22, p: [0, 0.47, 0.085], r3: [0, 0, Math.PI / 2], c: C.black },
@@ -283,7 +307,7 @@ export function buildKitchen({ R, world, scene, sim, view, lang = 'sv', rest, up
     const dh = FH - 0.16;
     const s = signMesh(label, 0.7, 0.2, '#fff', color); s.position.set(w / 2, dh * 0.8, 0.071);
     fixture(f, {
-      type: 'hinge', lp: [lx - w / 2, 0.12, D / 2], axis: 'y', limits: [-2.1, 0], mass: 7, damp: 2.5, latch: { at: -0.2, to: 0, k: 30 }, role: 'fridgedoor', n: ['Kylskåpsdörr', 'Fridge door'],
+      type: 'hinge', lp: [lx - w / 2, 0.12, D / 2], axis: 'y', limits: [-2.1, 0], mass: 7, damp: 2.5, latch: { at: -0.2, to: 0, k: 30 }, role: 'fridgedoor', n: ['Kylskåpsdörr', 'Fridge door'], hint: ['ta handtaget och dra upp dörren', 'grab the handle and pull it open'],
       col: [{ s: 'box', hx: w / 2, hy: dh / 2, hz: 0.035, p: [w / 2, dh / 2, 0.035] }, { s: 'box', hx: 0.025, hy: 0.3, hz: 0.035, p: [w - 0.12, dh * 0.5, 0.105] }],
       parts: [{ g: 'box', sz: [w, dh, 0.07], p: [w / 2, dh / 2, 0.035], c: COL.fridge, round: 1 },
         { g: 'cap', r: 0.025, len: 0.56, p: [w - 0.12, dh * 0.5, 0.115], c: COL.fridge === 0x2a2d35 ? 0xd4af37 : C.steelDark },
@@ -339,7 +363,7 @@ export function buildKitchen({ R, world, scene, sim, view, lang = 'sv', rest, up
     const stream = f.obj(new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.02, 1, 8), new THREE.MeshBasicMaterial({ color: 0x8fd6ff, transparent: true, opacity: 0.8 })), lx, H, pz + 0.3);
     stream.visible = false;
     const lever = fixture(f, {
-      type: 'hinge', lp: [lx + 0.16, H + 0.08, pz], axis: 'x', limits: [-1.0, 0], mass: 0.5, damp: 7, role: 'tap', n: ['Kranspak', 'Tap lever'],
+      type: 'hinge', lp: [lx + 0.16, H + 0.08, pz], axis: 'x', limits: [-1.0, 0], mass: 0.5, damp: 7, role: 'tap', n: ['Kranspak', 'Tap lever'], hint: ['lyft spaken = vatten', 'lift the lever = water'],
       col: [{ s: 'box', hx: 0.025, hy: 0.022, hz: 0.11, p: [0, 0, 0.11] }, { s: 'ball', rad: 0.04, p: [0, 0, 0.23] }],
       parts: [{ g: 'box', sz: [0.04, 0.035, 0.22], p: [0, 0, 0.11], c: C.steel }, { g: 'ball', r: 0.04, p: [0, 0, 0.23], c: 0x3d8bff }, { g: 'cyl', r: 0.035, h: 0.08, p: [0, -0.04, 0], c: C.steelDark }],
     });
@@ -357,7 +381,7 @@ export function buildKitchen({ R, world, scene, sim, view, lang = 'sv', rest, up
     const oil = f.obj(new THREE.Mesh(new THREE.BoxGeometry(vw, 0.01, vd), new THREE.MeshToonMaterial({ color: COL.oil, gradientMap: toonGradient(), transparent: true, opacity: 0.82 })), lx, by + 0.22, 0);
     oil.renderOrder = 2;
     const s = signMesh(L('FRITÖS', 'FRYER'), 0.4, 0.1, '#fff', '#d9822b'); f.obj(s, lx, 0.5, D / 2 + 0.006);
-    const kid = knob(f, lx, 0.72, D / 2, 0xd9822b, 'fryer');
+    const kid = knob(f, lx, 0.72, D / 2 + 0.04, 0xd9822b, 'fryer', ['fritösen', 'the fryer']);   // flush with the fryer's front wall (it was buried 4 cm)
     K.fryers.push({ id: K.fryers.length, zone: f.aabb(lx, by + 0.11, 0, vw, 0.22, vd), knob: kid, oil, pos: f.pt(lx, by + 0.22, 0), oilY: by + 0.22 });
     tool('basket', f.pt(lx - 0.12, by + 0.02, 0), f.yaw, true);
     return w;
@@ -372,7 +396,7 @@ export function buildKitchen({ R, world, scene, sim, view, lang = 'sv', rest, up
   function blender(f, lx, lz = -0.12) {
     f.box(lx, H + 0.07, lz, 0.26, 0.14, 0.26, COL.black, { solid: true }); f.cyl(lx, H + 0.145, lz, 0.1, 0.012, C.steelDark, { shadow: false });
     const lever = fixture(f, {
-      type: 'hinge', lp: [lx, H + 0.06, lz + 0.14], axis: 'x', limits: [-0.75, 0.75], mass: 0.4, damp: 2, bistable: { a: -0.7, b: 0.7, k: 60 }, start: -0.7, role: 'blender', n: ['Mixerspak', 'Blender switch'],
+      type: 'hinge', lp: [lx, H + 0.06, lz + 0.14], axis: 'x', limits: [-0.75, 0.75], mass: 0.4, damp: 2, bistable: { a: -0.7, b: 0.7, k: 60 }, start: -0.7, role: 'blender', n: ['Mixerspak', 'Blender switch'], hint: ['fäll spaken = på/av', 'flip it = on/off'],
       col: [{ s: 'box', hx: 0.02, hy: 0.06, hz: 0.02, p: [0, 0.06, 0] }, { s: 'ball', rad: 0.035, p: [0, 0.14, 0] }],
       parts: [{ g: 'box', sz: [0.03, 0.12, 0.03], p: [0, 0.06, 0], c: C.steel }, { g: 'ball', r: 0.035, p: [0, 0.14, 0], c: C.red }],
     });
@@ -437,11 +461,32 @@ export function buildKitchen({ R, world, scene, sim, view, lang = 'sv', rest, up
     lf.obj(signMesh(L('STARTA SERVERING', 'START SERVICE'), 1.1, 0.24, '#fff', '#e5483d'), 0, 1.75, 0.012);
     lf.obj(signMesh(L('⬇ dra i spaken ⬇', '⬇ pull the lever ⬇'), 0.9, 0.16, '#2b2f38', '#ffd84d'), 0, 1.55, 0.072);
     K.lever = fixture(lf, {
-      type: 'hinge', lp: [0, 1.3, 0.07], axis: 'x', limits: [0, 1.35], mass: 1.2, damp: 3, spring: { to: 0, k: 14 }, role: 'service', n: ['Serveringsspak', 'Service lever'],
+      type: 'hinge', lp: [0, 1.3, 0.07], axis: 'x', limits: [0, 1.35], mass: 1.2, damp: 3, spring: { to: 0, k: 14 }, role: 'service', n: ['Serveringsspak', 'Service lever'], hint: ['dra ner = starta serveringen', 'pull down = start the service'],
       col: [{ s: 'box', hx: 0.022, hy: 0.16, hz: 0.022, p: [0, 0.16, 0.02] }, { s: 'ball', rad: 0.06, p: [0, 0.34, 0.02] }],
       parts: [{ g: 'box', sz: [0.04, 0.32, 0.04], p: [0, 0.16, 0.02], c: C.steel }, { g: 'ball', r: 0.06, p: [0, 0.34, 0.02], c: C.red }, { g: 'cyl', r: 0.05, h: 0.1, p: [0, 0, 0.0], r3: [0, 0, Math.PI / 2], c: C.steelDark }],
     });
     K.leverPos = lf.pt(0, 1.4, 0.2);
+  }
+  // --- deliveries: a marked floor spot by the west wall + a wall phone for ordering ingredients
+  if (lay.delivery) {
+    const [dx, dz] = lay.delivery;
+    const mk = canvasPlane(1.2, 1.2, 256, (g, W2) => {
+      for (let i = -8; i < 16; i++) { g.fillStyle = i % 2 ? '#1d1d1d' : '#f2c31b'; g.beginPath(); g.moveTo(i * 24, 0); g.lineTo(i * 24 + 24, 0); g.lineTo(i * 24 + 24 - W2, W2); g.lineTo(i * 24 - W2, W2); g.fill(); }
+      g.fillStyle = COL.grime ? '#8d8469' : '#d9d3c3'; g.fillRect(22, 22, W2 - 44, W2 - 44);
+      g.fillStyle = '#1d1d1d'; g.font = 'bold 40px Fredoka, sans-serif'; g.textAlign = 'center'; g.fillText(L('LEVERANS', 'DELIVERY'), W2 / 2, W2 / 2 + 14);
+    });
+    mk.rotation.x = -Math.PI / 2; mk.position.set(dx, 0.009, dz); scene.add(mk);
+    const pf = new Frame(K, -hx, dz + 0.95, Math.PI / 2);          // on the west wall, facing into the kitchen
+    pf.box(0, 1.35, 0.045, 0.26, 0.4, 0.09, 0xd9534f, { solid: true }); pf.box(0, 1.47, 0.092, 0.16, 0.1, 0.006, 0xf4ecd2, { shadow: false });
+    for (let i = 0; i < 9; i++) pf.box(-0.04 + (i % 3) * 0.04, 1.27 - Math.floor(i / 3) * 0.035, 0.093, 0.026, 0.022, 0.006, 0x2b2f38, { shadow: false });
+    pf.obj(signMesh(L('📞 BESTÄLL RÅVAROR', '📞 ORDER INGREDIENTS'), 0.95, 0.2, '#fff', '#2e86c1'), 0, 1.78, 0.03);
+    pf.obj(signMesh(L('lyft luren', 'lift the handset'), 0.42, 0.1, '#2b2f38', '#ffd84d'), 0, 1.08, 0.095);
+    K.phone = fixture(pf, {
+      type: 'hinge', lp: [0.17, 1.22, 0.07], axis: 'x', limits: [0, 1.25], mass: 0.6, damp: 3, spring: { to: 0, k: 12 }, role: 'phone', n: ['Telefonlur', 'Phone handset'], hint: ['lyft luren = beställ råvaror', 'lift the handset = order ingredients'],
+      col: [{ s: 'box', hx: 0.03, hy: 0.13, hz: 0.03, p: [0, 0.13, 0.02] }],
+      parts: [{ g: 'cap', r: 0.024, len: 0.16, p: [0, 0.13, 0.03], c: 0x22252b }, { g: 'ball', r: 0.042, sc: [1, 0.7, 1], p: [0, 0.02, 0.045], c: 0x22252b }, { g: 'ball', r: 0.042, sc: [1, 0.7, 1], p: [0, 0.24, 0.045], c: 0x22252b }],
+    });
+    K.delivery = { x: dx, z: dz };
   }
   // restaurant sign above the pass (crooked in the dump)
   { const s = signMesh(rest.n[lang === 'en' ? 1 : 0].toUpperCase(), Math.min(3.6, passX * 0.9), 0.62, COL.signFg, COL.sign); s.position.set(0, Math.min(wallH - 0.45, 3.3), zN + 0.16); if (COL.grime || COL.cracks) s.rotation.z = -0.06; scene.add(s); }
@@ -537,12 +582,12 @@ export function addPosters(K, scene, menu, lang, tips = []) {
       g.font = `${size}px Caveat, cursive`; g.textAlign = 'left';
       menu.forEach((r, i) => { const c = i % cols, row = Math.floor(i / cols), x = 60 + c * (W - 100) / cols, y = 150 + row * (H - 160) / rows + size * 0.8; g.fillStyle = '#fff0b0'; g.fillText(r.icon, x, y); g.fillStyle = '#f4f1e6'; g.fillText(r.n[li], x + size * 1.4, y); });
     });
-    m.position.set(-(passX + sideW / 2), Math.min(2.05, ROOM.wallH - h / 2 - 0.3), zN + 0.17);
+    m.position.set(-(passX + sideW / 2), Math.min(2.05, ROOM.wallH - h / 2 - 0.3), zN + 0.185);
   }
   // sticky notes: right of the pass (above the lever sign) and along the south wall over the sinks
   const spots = [];
-  for (let i = 0; i < 6; i++) spots.push([passX + 1.85 + (i % 3) * 0.5, 2.0 - Math.floor(i / 3) * 0.5, zN + 0.165, 0]);   // right of the service-lever sign
-  for (let i = 0; i < 8; i++) spots.push([hx - 1.2 - i * 1.0, 1.72 + (i % 2) * 0.46, hz - 0.03, Math.PI]);
+  for (let i = 0; i < 6; i++) spots.push([passX + 1.85 + (i % 3) * 0.5, 2.0 - Math.floor(i / 3) * 0.5, zN + 0.19, 0]);   // right of the service-lever sign
+  for (let i = 0; i < 8; i++) spots.push([hx - 1.2 - i * 1.0, 1.72 + (i % 2) * 0.46, hz - 0.045, Math.PI]);
   const colors = ['#fff59b', '#ffc4d6', '#bfe4ff', '#c9f0a0'];
   tips.slice(0, spots.length).forEach((tip, i) => {
     const [x, y, z, ry] = spots[i]; if (Math.abs(x) > hx - 0.3) return;

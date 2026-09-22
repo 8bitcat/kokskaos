@@ -60,7 +60,7 @@ export const RESTAURANTS = [
       ],
       bins: [[-4.6, -2.4], [4.9, 3.9], [-1.6, 3.6]],
       junk: [[-4.6, 5.2], [-3.4, 5.35], [-5.6, 5.3], [6.9, 4.6]],
-      tablesFront: [-5, 0, 5], tablesBack: [],
+      tablesFront: [-5, 0, 5], tablesBack: [], delivery: [-7.1, -4.0],
     }),
   },
   // ============================================================================ 2. the bistro
@@ -97,7 +97,7 @@ export const RESTAURANTS = [
         { x: 8.3, z: -0.3, yaw: PI, spec: [['board', { wood: 1, back: 1 }], ['counter', 1.0, { wood: 1, back: 1 }, [['plate', -0.2, 0.1], ['bowl', 0.2, 0.1], ['jam', 0, -0.2], ['battermix', 0.2, -0.22]]]] },
       ],
       bins: [[-6.0, -0.2], [6.0, -0.2], [-6.2, 5.6], [6.4, 5.6], [9.2, 5.9]],
-      tablesFront: [-8, -4, 0, 4, 8], tablesBack: [-6, -2, 2, 6],
+      tablesFront: [-8, -4, 0, 4, 8], tablesBack: [-6, -2, 2, 6], delivery: [-10.1, -5.0],
     }),
   },
   // ============================================================================ 3 + 4 share the big MasterChef floor plan
@@ -151,7 +151,7 @@ function bigLayout(L, up, fancy) {
         ['counter', 1.0, { wood: 1, back: 1 }, [['plate', -0.2, 0.1], ['plate', 0.2, 0.1], i % 2 ? ['mortar', 0, -0.2] : ['bowl', 0, -0.2], i % 2 ? ['pestle', 0.2, -0.25] : ['jam', 0.25, -0.25], ['battermix', -0.3, -0.25]]]] })),
     ],
     bins: [[-6.2, -2.2], [6.2, -2.2], [-6.2, 2.2], [6.2, 2.2], [11.2, 7.2], [-6.2, 6.8], [6.2, 6.8]],
-    tablesFront: [-10, -5, 0, 5, 10], tablesBack: [-7.5, -2.5, 2.5, 7.5], fancy,
+    tablesFront: [-10, -5, 0, 5, 10], tablesBack: [-7.5, -2.5, 2.5, 7.5], fancy, delivery: [-12.1, -6.3],
   };
 }
 export const REST_BY_ID = Object.fromEntries(RESTAURANTS.map(r => [r.id, r]));

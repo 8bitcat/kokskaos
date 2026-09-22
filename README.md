@@ -28,6 +28,13 @@ URL-parametrar: `?lang=sv|en`, `?join=KOD`, `?rest=dump|bistro|grand|star`, `?ch
 - **Kockens anteckningar (Tab):** en handskriven receptbok med foton ur spelet (`img/recipes`, `img/howto`,
   genererade av `tools/photos.mjs`), steg-för-steg-instruktioner som genereras ur receptdata (`js/cookbook.js`)
   och klotter/post-it-lappar från `js/cookbook_text.js`. Samma lappar sitter på väggarna, plus en menytavla vid luckan.
+- **Beställa råvaror:** lyft luren på den röda väggtelefonen vid LEVERANS-rutan (eller pausmenyn) → beställningsmeny
+  (`js/supplier.js`). Värden tar betalt ur kassan under servering (gratis i fri lek) och släpper en `deliverycrate`
+  med råvarorna på rutan; tomma lådor försvinner av sig själva.
+- **Vred:** vrids bara medsols mellan AV och MAX (lägesstyrd motor, går inte runt). Bilden bakom vredet visar
+  gult→rött med flammor. Siktar man på ett vred visar tipsrutan vad det styr, AV/PÅ % och hur man vrider.
+- **Version:** `VERSION`/`BUILD` i `js/config.js` visas i startmenyn, pausmenyn och i spelet. Höj den vid varje
+  publicering så att man ser vilken version man spelar.
 - **Grepp:** verktyg snäpper till ett vettigt grepp när man tar dem (`grip`/`hold` i föremålsdatan): knivar och
   spadar pekar framåt, pannor hänger i handtaget, tallrikar/grytor rätas upp. Handen ligger `reach` meter rakt fram
   och blicken styr höjden – att titta ner snabbt är alltså ett rakt hugg.

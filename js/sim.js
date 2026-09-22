@@ -56,6 +56,11 @@ export class Sim {
       f.angle = 2 * Math.atan2(_q1.x * f.axis.x + _q1.y * f.axis.y + _q1.z * f.axis.z, _q1.w);
       if (f.angle > Math.PI) f.angle -= Math.PI * 2; else if (f.angle < -Math.PI) f.angle += Math.PI * 2;
     }
+    if (fx.type === 'knob' && (f.angle < lim[0] - 0.15 || f.angle > lim[1] + 0.15)) {      // never past the stops (no full turns)
+      const t = f.angle > 1.2 ? lim[0] : clamp(f.angle, lim[0], lim[1]);
+      _q1.copy(f.rest).multiply(_q2.setFromAxisAngle(f.axis, t)); f.body.setRotation({ x: _q1.x, y: _q1.y, z: _q1.z, w: _q1.w }, true);
+      f.body.setAngvel({ x: 0, y: 0, z: 0 }, true); f.angle = t; f.rot.copy(_q1);
+    }
     // "value": 0 at rest end, 1 at the far end of the travel
     const far = Math.abs(lim[0]) > Math.abs(lim[1]) ? lim[0] : lim[1];
     f.value = fx.bistable ? (f.angle > 0.15 ? 1 : 0) : clamp(f.angle / far, 0, 1);
@@ -224,7 +229,7 @@ export class Sim {
       }
       ent.floorT = 0;
       if (this.isBit(ent)) { this.setGroups(ent, GROUPS.heldBits); this.gather(p, h, ent.pos, HOLD.gatherR, 0.08); }
-    } else ent.heldBy = { p, h };
+    } else { ent.heldBy = { p, h }; hand.k0 = ent.angle; hand.yaw0 = p.yaw; }
     ent.body.wakeUp();
     this.sfx('pop', ent.pos, 0.35, 1.5);
     return true;
@@ -267,6 +272,7 @@ export class Sim {
     hand.extra.length = 0;
     if (ent.heldBy && ent.heldBy.p === p && ent.heldBy.h === h) { ent.heldBy = null; if (!ent.fixture && !ent.dead) this.setGroups(ent, GROUPS.item); }
     const o = p.hands[1 - h]; if (o.ent === ent && ent.fixture) ent.heldBy = { p, h: 1 - h };
+    else if (ent.fixture && ent.fixture.type === 'knob') ent.joint.configureMotorPosition(ent.angle, 0, ent.fixture.damp ?? 6);   // stays where you left it
   }
   throwHeld(id, power) {
     const p = this.players.get(id); if (!p) return;
@@ -310,11 +316,13 @@ export class Sim {
       hand.pos.copy(gp);
       if (ent.fixture) {
         const Hp = this.handPos(p, reach, _c), err = _d.copy(Hp).sub(gp), dist = err.length();
-        if (dist > HOLD.fixtureBreak) { this.release(p, h); continue; }
         const fx = ent.fixture, body = ent.body;
+        if (dist > (fx.type === 'knob' ? 2.2 : HOLD.fixtureBreak)) { this.release(p, h); continue; }
         if (fx.type === 'knob') {
-          const w = clamp(-err.dot(right) * HOLD.knobRate, -HOLD.knobMax, HOLD.knobMax);
-          body.setAngvel({ x: ent.axisW.x * w, y: ent.axisW.y * w, z: ent.axisW.z * w }, true);
+          // look right = turn clockwise; the knob is position-driven so it can never spin past its stops
+          let d = p.yaw - hand.yaw0; if (d > Math.PI) d -= Math.PI * 2; else if (d < -Math.PI) d += Math.PI * 2;
+          const target = clamp(hand.k0 + d * HOLD.knobGain, fx.limits[0], fx.limits[1]);
+          ent.joint.configureMotorPosition(target, 90, 9); body.wakeUp();
         } else {
           const lv = body.linvel(), av = body.angvel(), com = body.worldCom();
           _e.set(av.x, av.y, av.z).cross(_a.copy(gp).sub(com)).add(_a.set(lv.x, lv.y, lv.z));     // velocity of the grab point
@@ -633,6 +641,7 @@ export class Sim {
       if (e.pos.y < 0.16 && !e.heldBy && e.pos.z > -ROOM.hz) { e.floorT += dt; if (e.floorT > 45) { this.despawn(e, 'poof'); continue; } } else e.floorT = 0;
     }
     for (const b of K.blenders) if (b.on && b.jar) { b.jar.body.applyImpulse({ x: (this.rand() - 0.5) * 0.06, y: 0, z: (this.rand() - 0.5) * 0.06 }, true); }
+    for (const c of conts) if (c.kind === 'deliverycrate' && !c.heldBy) { if (c.count === 0 && c.age > 12) { c.emptyT = (c.emptyT || 0) + dt; if (c.emptyT > 6) this.despawn(c, 'poof'); } else c.emptyT = 0; }
     for (const c of conts) if (c.cooking > 0) loops.push(['sizzle', [c.pos.x, c.pos.y, c.pos.z], Math.min(1, 0.45 + c.cooking * 0.12)]);
     for (const f of K.fryers) { if (f.busy > 0) loops.push(['fryer', f.pos, Math.min(1, 0.5 + f.busy * 0.05)]); if ((f.busy > 0) !== f.wasBusy) { f.wasBusy = f.busy > 0; this.appDirty = true; } }
 

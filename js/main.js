@@ -1,7 +1,8 @@
 // Kökskaos — boot, menu, career, and the game loop that glues simulation (host), networking, view and HUD together.
 import RAPIER from '../vendor/rapier.es.js';
 import * as THREE from '../vendor/three.module.js';
-import { PHYS_DT, GRAVITY, SNAP_HZ, INPUT_HZ, VERSION } from './config.js';
+import { PHYS_DT, GRAVITY, SNAP_HZ, INPUT_HZ, VERSION, BUILD } from './config.js';
+import { openSupplier } from './supplier.js';
 import { STR } from './i18n.js';
 import { buildKitchen } from './kitchen.js';
 import { Sim } from './sim.js';
@@ -63,6 +64,7 @@ class Game {
         carry: (c) => { this.view.carry(c); this.ev.x.push({ t: 'carry', c }); },
         delivered: (d) => { this.view.delivered(d); this.ev.x.push({ t: 'deliv', d: { w: d.w, table: d.table, carry: d.carry, pay: d.pay } }); },
         mood: (table, m) => { this.view.mood(table, m); this.ev.x.push({ t: 'mood', table, m }); },
+        shop: (pid) => { if (pid === this.localId) this.openSupply(); else this.net.sendTo(pid, { t: 'shop' }); },
       });
       this.level = p.level; this.menu = menuFor(rest.tier, this.level);
       this.service.menu = this.menu; this.service.best = p.rest(rest.id).best; this.service.day = p.rest(rest.id).days + 1;
@@ -94,7 +96,7 @@ class Game {
     this.view.setLocal(this.localId, color);
     for (const p of this.roster.values()) this.view.upsertPlayer(p);
     this.player.enabled = true; this.player.yaw = 0; this.player.home = this.K.spawns[4];
-    this.player.onLock = (l) => { this.hud.setLocked(l, this.paused); if (!l && !this.testMode) { if (!this.bookFromPause) this.toggleBook(false); this.setPaused(true); } };
+    this.player.onLock = (l) => { this.hud.setLocked(l, this.paused); if (!l && !this.testMode && !this.supplyOpen) { if (!this.bookFromPause) this.toggleBook(false); this.setPaused(true); } };
     $('menu').style.display = 'none'; this.hud.show(true); this.hud.setLocked(false, false);
     this.hud.setEmotes(this.meta.ownedEmotes().slice(0, 10));
     this.bindKeys(); this.updateRoom();
@@ -152,6 +154,7 @@ class Game {
       else if (m.t === 'throw') this.sim.throwHeld(pid, +m.power || 0);
       else if (m.t === 'level') this.sim.levelHeld(pid);
       else if (m.t === 'emote') { const e = typeof m.e === 'string' && EMOTES.some(x => x.id === m.e) ? m.e : null; const vp = this.view.players.get(pid); if (vp) { vp.emote = e; vp.emoteT = 0; } this.ev.x.push({ t: 'em', id: pid, e }); }
+      else if (m.t === 'supply') this.service.order(m.items, pid);
       else if (m.t === 'look') { const info = this.roster.get(pid); if (info && m.look && typeof m.look === 'object') { info.look = m.look; if (CHEF_COLORS.includes(m.color)) info.color = m.color; this.view.upsertPlayer(info); this.ev.x.push({ t: 'pj', p: info, quiet: 1 }); } }
     });
     net.on('bin', (pid, buf) => { if (!this.ready.has(pid) || buf.byteLength < 34) return; const i = decodeInput(buf); if ([i.x, i.y, i.z, i.yaw, i.pitch].every(Number.isFinite)) { this.sim.setInput(pid, i); const p = this.sim.players.get(pid); if (p) p.air = i.air; } });
@@ -200,6 +203,7 @@ class Game {
       else if (m.t === 'go') { this.onWelcome?.(); }
       else if (m.t === 'full') { alert(S.full); location.reload(); }
       else if (m.t === 'bonk') { if (this.player) this.onBonk(m.dx, m.dz, m.pw); }
+      else if (m.t === 'shop') { if (this.player) this.openSupply(); }
       else if (m.t === 'ev') this.applyEv(m);
     });
     net.on('bin', (_, buf) => {
@@ -297,11 +301,26 @@ class Game {
     $('resume').onclick = () => { this.setPaused(false); $('game').requestPointerLock?.(); };
     $('startsvc').onclick = () => { if (this.isHost && !this.service.running) this.service.start(this.sim.players.size); this.setPaused(false); $('game').requestPointerLock?.(); };
     $('pwardrobe').onclick = () => this.meta.openWardrobe();
+    $('psupply').onclick = () => { $('pause').style.display = 'none'; this.openSupply(true); };
     $('pbook').onclick = () => { this.bookFromPause = true; $('pause').style.display = 'none'; this.toggleBook(true); };
     $('bclose').addEventListener('click', () => this.toggleBook(false));
     $('quit').onclick = () => { this.net.close(); location.href = location.pathname; };
     $('startsvc').style.display = this.isHost ? '' : 'none';
     window.addEventListener('beforeunload', () => { this.profile.save(); this.net.close(); });
+  }
+  // the wholesaler's order menu (from the wall phone or the pause menu)
+  openSupply(fromPause) {
+    if (this.supplyOpen) return;
+    this.supplyOpen = true; this.supplyFromPause = !!fromPause; this.player.frozen = true;
+    if (document.pointerLockElement) document.exitPointerLock();
+    const svc = this.svcState || { run: 0, coins: 0 };
+    openSupplier($('dialog'), { lang, running: !!svc.run, till: svc.coins,
+      onOrder: (items) => { if (this.isHost) this.service.order(items, this.localId); else this.net.send({ t: 'supply', items }); },
+      onClose: () => this.closeSupply() });
+  }
+  closeSupply() {
+    this.supplyOpen = false; this.player.frozen = false; $('dialog').style.display = 'none';
+    if (this.supplyFromPause) $('pause').style.display = 'flex'; else if (!this.testMode) $('game').requestPointerLock?.();
   }
   toggleBook(on) {
     this.hud.book(on); this.player.frozen = on;
@@ -315,9 +334,11 @@ async function boot() {
   document.documentElement.lang = lang;
   $('tagline').textContent = S.tagline; $('lname').textContent = S.name; $('bhost').textContent = S.host; $('bjoin').textContent = S.join; $('bsolo').textContent = S.solo;
   $('code').placeholder = S.code; $('resume').textContent = S.resume; $('startsvc').textContent = S.startService; $('quit').textContent = S.quit; $('ptitle').textContent = S.paused; $('pcodel').textContent = S.kitchenCode;
+  $('psupply').textContent = '📞 ' + (lang === 'en' ? 'Order ingredients' : 'Beställ råvaror');
   $('pwardrobe').textContent = '🎩 ' + (lang === 'en' ? 'Wardrobe' : 'Garderob'); $('pbook').textContent = '📖 ' + (lang === 'en' ? "Chef's notes" : 'Kockens anteckningar');
   $('langbtn').textContent = lang === 'sv' ? 'English' : 'Svenska'; $('langbtn').onclick = () => { store.set('lang', lang === 'sv' ? 'en' : 'sv'); location.href = location.pathname; };
-  $('ver').textContent = 'v' + VERSION;
+  $('ver').textContent = 'v' + VERSION; $('verbadge').textContent = `${lang === 'en' ? 'Version' : 'Version'} ${VERSION} · ${BUILD}`;
+  $('pver').textContent = `Kökskaos v${VERSION} · ${BUILD}`; $('gver').textContent = `Kökskaos v${VERSION}`;
   const nameEl = $('name'); nameEl.value = store.get('name', ''); nameEl.placeholder = lang === 'sv' ? 'Kocken' : 'Chef';
   let color = +store.get('color', CHEF_COLORS[Math.floor(Math.random() * CHEF_COLORS.length)]); if (!CHEF_COLORS.includes(color)) color = CHEF_COLORS[0];
   const profile = new Profile();

@@ -1,5 +1,6 @@
 // Kökskaos — shared constants & tuning
-export const VERSION = '0.1.0';
+export const VERSION = '0.4.0';
+export const BUILD = '2026-09-22';
 
 export const MAX_PLAYERS = 9;          // host + 8 friends
 export const PEER_PREFIX = 'kokskaos-v1-';
@@ -42,7 +43,7 @@ export const HOLD = {
   linGain: 16, maxSpeed: 7.5, angGain: 14, maxAngSpeed: 14,
   breakDist: 1.25, breakTime: 0.45,
   fixtureK: 140, fixtureC: 14, fixtureMaxF: 75, fixtureBreak: 1.0,
-  knobRate: 22, knobMax: 5,
+  knobRate: 22, knobMax: 5, knobGain: 4.5,   // knobs: turning your view 1 rad turns the knob 4.5 rad (clockwise when you look right)
   throwMin: 3.2, throwMax: 11.5, throwChargeTime: 0.9,
   handful: 12, gatherR: 0.15, sweepR: 0.11,   // small cut food: max pieces per hand, pick-up radius around the first piece, sweep radius
 };

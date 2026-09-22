@@ -4,6 +4,16 @@
 import { box, cyl, ball, cap, ring, bowlCol, CAPX, C } from './itemkit.js';
 
 export const UTENSILS = {
+  deliverycrate: {   // ordered ingredients arrive in this; it disappears by itself once empty
+    n: ['Leveranslåda', 'Delivery crate'], mass: 5, friction: 0.9, sfx: 'wood', grip: 'up',
+    col: [box(0.3, 0.012, 0.21, [0, 0.012, 0], null, 0.4), box(0.3, 0.12, 0.012, [0, 0.13, 0.2], null, 0.15), box(0.3, 0.12, 0.012, [0, 0.13, -0.2], null, 0.15),
+      box(0.012, 0.12, 0.21, [0.29, 0.13, 0], null, 0.15), box(0.012, 0.12, 0.21, [-0.29, 0.13, 0], null, 0.15)],
+    container: { bx: 0.27, bz: 0.18, y0: 0.02, h: 0.45, floorY: 0.024 },
+    parts: [{ g: 'box', sz: [0.6, 0.024, 0.42], p: [0, 0.012, 0], c: C.woodDark },
+      ...[0.06, 0.13, 0.2].map(y => ({ g: 'box', sz: [0.6, 0.05, 0.024], p: [0, y, 0.2], c: C.wood })), ...[0.06, 0.13, 0.2].map(y => ({ g: 'box', sz: [0.6, 0.05, 0.024], p: [0, y, -0.2], c: C.wood })),
+      ...[0.06, 0.13, 0.2].map(y => ({ g: 'box', sz: [0.024, 0.05, 0.42], p: [0.29, y, 0], c: C.wood })), ...[0.06, 0.13, 0.2].map(y => ({ g: 'box', sz: [0.024, 0.05, 0.42], p: [-0.29, y, 0], c: C.wood })),
+      { g: 'box', sz: [0.2, 0.08, 0.004], p: [0, 0.13, 0.213], c: 0xf2c31b }],
+  },
   wok: {
     n: ['Wok', 'Wok'], mass: 1.2, mat: 'metal', friction: 0.55, grip: 'back', hold: [0.32, 0.095, 0],
     col: [...bowlCol(0.08, 0.18, 0.1, 0.014, 0.55), box(0.11, 0.011, 0.018, [0.3, 0.095, 0], null, 0.1)],

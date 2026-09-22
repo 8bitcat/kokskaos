@@ -162,7 +162,7 @@ export function techPages(lang) {
   const t = (sv, en) => (li ? en : sv);
   return [
     { id: 'hob', title: t('Spisen', 'The hob'), photo: 'img/howto/hob.jpg', lines: [
-      t('Ta tag i ett vred och dra åt höger → plattan tänds. Tillbaka åt vänster = av.', 'Grab a knob and drag it to the right → the burner lights. Back to the left = off.'),
+      t('Ta tag i ett vred och dra musen åt höger → plattan tänds. Bilden runt vredet visar hur mycket: AV överst, medsols mot de stora röda flammorna = mer värme. Tillbaka åt vänster = av.', 'Grab a knob and drag the mouse to the right → the burner lights. The picture around the knob shows how much: OFF at the top, clockwise towards the big red flames = more heat. Back to the left = off.'),
       t('Varje vred hör till en platta: de två yttre = bakre plattorna, de två inre = främre. Det röda vredet i mitten är ugnen.', 'Each knob belongs to one burner: the two outer ones = back burners, the two inner ones = front. The red knob in the middle is the oven.'),
       t('Pannan blir het efter några sekunder. Maten steks bara i en HET panna som står PÅ plattan.', 'The pan gets hot after a few seconds. Food only fries in a HOT pan sitting ON the burner.'),
       t('Biff, burgare, fisk och pannkakor steks en sida i taget — VÄND dem: ta tag, håll in R och dra musen tills den ligger upp och ner (eller kasta upp pannan). Sikta på maten: båda sidornas % ska bli gröna.', 'Steak, patties, fish and pancakes cook one side at a time — FLIP them: grab it, hold R and drag the mouse until it is upside down (or toss the pan). Aim at the food: both sides\' % must turn green.'),
@@ -194,6 +194,10 @@ export function techPages(lang) {
       t('Dra i den röda spaken vid serveringsluckan → serveringen börjar och beställningar dyker upp (lappar uppe till vänster).', 'Pull the red lever by the pass (the serving hatch) → service starts and orders appear (tickets top-left).'),
       t('Lägg upp rätten på en tallrik — bara det som står i receptet, extra bitar kostar 8 kr styck — och ställ den på luckan. Skylten säger vad som saknas eller är fel (rå, bränd, fel tillagning).', 'Plate the dish — only what the recipe says, every extra bit costs 8 kr — and put it on the pass. The sign says what is missing or wrong (raw, burnt, wrong method).'),
       t('Stämmer allt hämtar servitören. Snabbt = mer betalt. Gästerna blir sura om de får vänta.', 'When it matches, a waiter collects it. Fast = more pay. Guests get grumpy if they wait.'), p.done] },
+    { id: 'supply', title: t('Beställa råvaror', 'Ordering ingredients'), photo: 'img/howto/delivery.jpg', lines: [
+      t('Lyft luren på den röda telefonen vid LEVERANS-rutan (eller välj "Beställ råvaror" i pausmenyn).', 'Lift the handset on the red phone by the DELIVERY spot (or pick "Order ingredients" in the pause menu).'),
+      t('Välj vad du vill ha med + och −, max 30 saker per låda. I fri lek är det gratis — under serveringen dras det från kassan.', 'Pick what you want with + and −, max 30 items per crate. Free in free play — during service it is paid from the till.'),
+      t('Efter några sekunder landar en låda på LEVERANS-rutan. Plocka ur den — tomma lådor försvinner av sig själva.', 'After a few seconds a crate lands on the DELIVERY spot. Take things out — empty crates disappear by themselves.')] },
     { id: 'bin', title: t('Tunnan', 'The bin'), photo: 'img/howto/bin.jpg', lines: [
       t('Bränd mat, missar och golvmat: släng dem i de gröna tunnorna. Puff — borta.', 'Burnt food, mistakes and floor food: throw them in the green bins. Poof — gone.'),
       t('Råvaror fylls på av sig själva i kylar, backar och hyllor. Verktyg som ligger länge på golvet hittar hem själva.', 'Ingredients restock themselves in fridges, crates and shelves. Tools left on the floor find their own way home.')] },
