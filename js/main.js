@@ -66,9 +66,9 @@ class Game {
         mood: (table, m) => { this.view.mood(table, m); this.ev.x.push({ t: 'mood', table, m }); },
         shop: (pid) => { if (pid === this.localId) this.openSupply(); else this.net.sendTo(pid, { t: 'shop' }); },
       });
-      this.level = p.level; this.menu = menuFor(rest.tier, this.level);
+      this.level = p.level; this.menu = menuFor(rest.tier, this.level, rest.menu);
       this.service.menu = this.menu; this.service.best = p.rest(rest.id).best; this.service.day = p.rest(rest.id).days + 1;
-      Object.assign(this.service.mods, rest.mods, { patience: rest.mods.patience * (up.bread ? 1.2 : 1), pay: rest.mods.pay * (up.tipjar ? 1.15 : 1), interval: rest.mods.interval * Math.max(0.72, 1 - 0.015 * (this.level - 1)), maxOpen: Math.floor(this.level / 6) });
+      Object.assign(this.service.mods, rest.mods, { patience: rest.mods.patience * (up.bread || up.awning ? 1.2 : 1) * (up.lights ? 1.1 : 1), pay: rest.mods.pay * (up.tipjar || up.speaker ? 1.15 : 1), interval: rest.mods.interval * Math.max(0.72, 1 - 0.015 * (this.level - 1)), maxOpen: Math.floor(this.level / 6) });
       for (let i = 0; i < 90; i++) this.sim.step();          // let the pantry settle before anyone looks
       this.view.setApp(this.sim.appState());
       this.localId = 0;
@@ -91,7 +91,7 @@ class Game {
       this.player = new LocalPlayer(RAPIER, this.world, $('game'), this.spawnPos);
       this.code = code;
     }
-    this.hud.setMenu(this.menu.map(r => r.id), this.rest, this.level, this.K);
+    this.hud.setMenu(this.menu.map(r => r.id), this.rest, this.level, this.K, this.rest.menu);
     addPosters(this.K, this.view.scene, this.menu, lang, getText().TIPS);
     this.view.setLocal(this.localId, color);
     for (const p of this.roster.values()) this.view.upsertPlayer(p);

@@ -19,7 +19,7 @@ export class Sim {
     this.nextId = 1000; this.nextChain = 1; this.tick = 0; this.time = 0; this.anchors = new Map();
     this.K = null; this.itemCount = 0; this.toolCounts = {}; this.rand = Math.random; this.sfxBudget = 0;
     this.removed = []; this.loops = []; this.appDirty = true; this.npcs = new Map();
-    this.mods = { heat: 1, fry: 1, oven: 1 };
+    this.mods = { heat: 1, fry: 1, oven: 1 }; this.presses = [];
   }
 
   // ------------------------------------------------------------------ fixtures
@@ -207,6 +207,14 @@ export class Sim {
     }
     const ent = best.ent;
     if (ent.locked) return false;
+    if (ent.fixture && ent.fixture.type === 'button') {          // keypad keys are poked with a finger, not held
+      if (this.time - (ent.pressT || 0) > 0.22) {
+        ent.pressT = this.time; ent.pressUntil = this.time + 0.12; ent.mode = 'press';
+        ent.joint.configureMotorPosition(ent.fixture.limits[0], 120, 8); ent.body.wakeUp();
+        this.presses.push(ent.fixture); this.sfxBudget++; this.sfx('click', ent.pos, 0.9, 1.5);
+      }
+      return false;
+    }
     const other = p.hands[1 - h];
     if (other.ent === ent && !ent.fixture) return false;
     if (ent.heldBy && !ent.fixture) this.unhold(ent);      // steal!
@@ -235,7 +243,7 @@ export class Sim {
     return true;
   }
   // ---- handfuls: small loose food bits (potato sticks, slices, rings, blobs...). Never tools, pans, pots or whole ingredients.
-  isBit(e) { const d = e.def; return !!(d && d.food && !d.container && !d.fragile && !e.chain && !e.fixture && e.bound <= 0.07 && d.mass <= 0.065); }
+  isBit(e) { const d = e.def; return !!(d && (d.food || d.money) && !d.container && !d.fragile && !e.chain && !e.fixture && e.bound <= 0.09 && d.mass <= 0.065); }
   gather(p, h, at, r, dy) {
     const hand = p.hands[h], main = hand.ent; if (!main || !this.isBit(main)) return 0;
     const kinds = new Set([main.kind]); for (const x of hand.extra) kinds.add(x.ent.kind);
@@ -395,6 +403,7 @@ export class Sim {
       }
     }
     this.world.step(this.events);
+    for (const f of this.fixtures.values()) if (f.pressUntil && this.time > f.pressUntil) { f.pressUntil = 0; f.mode = ''; }
     for (const e of this.ents.values()) {
       if (e.body.isSleeping()) continue;
       const t = e.body.translation(), r = e.body.rotation();

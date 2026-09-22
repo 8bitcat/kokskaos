@@ -84,7 +84,7 @@ export const RECIPES = [
   { id: 'surfturf', n: ['Biff & räkor de luxe', 'Surf & turf de luxe'], icon: '🦐', price: 320, patience: 280, w: 2, tier: 3, lvl: 16,
     req: [{ k: 'steak', n: 1, cooked: PAN }, { k: 'shrimp', n: 3, cooked: ['boil', 'fry'] }, { k: 'broccoli', n: 2, cooked: ['boil', 'fry'] }, { k: 'lemonslice', n: 1 }] },
 ];
-export const menuFor = (tier, lvl) => RECIPES.filter(r => r.tier <= tier && r.lvl <= lvl);
+export const menuFor = (tier, lvl, only) => RECIPES.filter(r => (only ? only.includes(r.id) : r.tier <= tier) && r.lvl <= lvl);
 export const RECIPE_BY_ID = Object.fromEntries(RECIPES.map(r => [r.id, r]));
 const METHOD_NAME = { fry: ['stekt', 'fried'], grill: ['grillad', 'grilled'], bake: ['ugnsbakad', 'baked'], boil: ['kokt', 'boiled'], deepfry: ['friterad', 'deep-fried'] };
 export function describeReq(q, lang) {
@@ -125,6 +125,7 @@ export class Service {
     this.labels = []; this.result = null; this.resultT = 0; this.players = 1; this.evalT = 0; this.leverArmed = true; this.dirty = true; this.best = 0;
     this.menu = RECIPES; this.mods = { patience: 1, pay: 1, interval: 1, maxOpen: 0, stars: 1 }; this.day = 1;
     this.waiters = []; this.resultN = 0; this.deliveries = []; this.phoneArmed = true;
+    this.truck = !!(K.rest && K.rest.truck); this.term = null; this.payOrder = null;
     const R = sim.R;
     K.waiterIdle.slice(0, 3).forEach((p, i) => {
       const body = sim.world.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(p[0], 0.9, p[1]));
@@ -172,6 +173,7 @@ export class Service {
     // lifting the wall phone's handset opens the order menu for whoever lifted it
     const ph = K.phone && sim.fixtures.get(K.phone);
     if (ph) { if (ph.value > 0.6 && this.phoneArmed && ph.heldBy) { this.phoneArmed = false; sim.sfxBudget++; sim.sfx('ding', ph.pos, 0.5, 1.7); this.hooks.shop?.(ph.heldBy.p.id); } if (ph.value < 0.25) this.phoneArmed = true; }
+    for (const fx of sim.presses.splice(0)) this.keyPress(fx);
     for (const d of this.deliveries) { d.t -= dt; if (d.t <= 0 && !d.crate) this.dropCrate(d); else if (d.crate && d.t <= -0.9) this.fillCrate(d); }
     this.deliveries = this.deliveries.filter(d => !d.filled);
     if (this.result) { this.resultT -= dt; if (this.resultT <= 0) { this.result = null; this.dirty = true; } }
@@ -197,6 +199,69 @@ export class Service {
     this.evalT -= dt;
     if (this.evalT <= 0) { this.evalT = 0.5; this.judgePass(); }
     this.updateWaiters(dt);
+  }
+  // ---- paying at the hatch: cash with change, or a card terminal you type the amount into
+  keyPress(fx) {
+    const t = this.term; if (!t || fx.key === undefined) return;
+    if (fx.key === 'C') t.typed = 0;
+    else if (fx.key === 'OK') {
+      if (t.typed === t.want) { t.ok = 0.9; this.hooks.sfx?.('ding'); } else { t.bad = 1.2; t.typed = 0; this.hooks.sfx?.('fail'); }
+    } else t.typed = Math.min(9990, t.typed + fx.key);
+    this.dirty = true;
+  }
+  tender(owed, exact) {
+    if (exact) { const out = []; let left = owed; for (const [k, v] of [['note500', 500], ['note200', 200], ['note100', 100], ['note50', 50], ['coin10', 10]]) while (left >= v) { out.push(k); left -= v; } return out; }
+    for (const [k, v] of [['note50', 50], ['note100', 100], ['note200', 200], ['note500', 500]]) if (v >= owed) return [k];
+    return ['note500'];
+  }
+  moneyNear(x) {
+    const P = this.K.pass, out = []; let sum = 0;
+    for (const e of this.sim.ents.values()) {
+      if (e.fixture || !e.def || !e.def.money || e.heldBy || e.dead || e.tender) continue;
+      if (Math.abs(e.pos.x - x) > 0.5 || e.pos.y < P.topY - 0.05 || e.pos.y > P.topY + 0.4) continue;
+      if (e.pos.z < P.zone.min[2] - 0.15 || e.pos.z > P.zone.max[2] + 0.15) continue;
+      out.push(e); sum += e.def.money;
+    }
+    return { items: out, sum };
+  }
+  payStep(w, o, dt) {
+    const sim = this.sim, K = this.K, rec = RECIPE_BY_ID[o.r];
+    if (!o.owed) {
+      const j = o.judge;
+      o.owed = Math.max(10, Math.round((rec.price * (0.55 + 0.45 * j.quality) + rec.price * 0.35 * o.frac - j.junk * 8) * this.mods.pay / 10) * 10);
+      o.card = (o.id % 5) >= 3;
+      if (o.card) { this.term = { want: o.owed, typed: 0, ok: 0, bad: 0 }; this.payOrder = o; }
+      else {
+        const notes = this.tender(o.owed, o.id % 3 === 0);
+        o.tendered = 0;
+        notes.forEach((k, i) => { const e = sim.spawn(k, [w.pos.x - 0.12 + i * 0.1, K.pass.topY + 0.3, K.pass.zone.min[2] + 0.18], null, { v: [0, -0.3, 0.5] }); if (e) { e.tender = true; o.tendered += e.def.money; } });
+        this.payOrder = o;
+        this.hooks.sfx?.('coin');
+      }
+      this.dirty = true;
+    }
+    o.payT = (o.payT || 0) + dt;
+    if (o.card) {
+      const t = this.term;
+      if (t && t.ok > 0) { t.ok -= dt; if (t.ok <= 0) { o.paid = true; this.term = null; this.payOrder = null; this.coins += o.owed; this.dirty = true; sim.sfxBudget++; sim.sfx('coin', w.pos, 0.9); } }
+      if (t && t.bad > 0) t.bad -= dt;
+    } else {
+      const need = o.tendered - o.owed;
+      if (need <= 0) { o.paid = true; this.payOrder = null; this.coins += o.owed; this.dirty = true; }
+      else {
+        const got = this.moneyNear(w.pos.x);
+        if (got.sum >= need) {
+          for (const e of got.items) sim.despawn(e);
+          this.coins += o.owed - (got.sum - need); this.payOrder = null; o.paid = true; this.dirty = true;
+          sim.sfxBudget++; sim.sfx('coin', w.pos, 0.9);
+          if (got.sum > need) this.hooks.toast?.('overchange', got.sum - need);
+        }
+      }
+    }
+    if (!o.paid && o.payT > 45) {      // gave up waiting: takes the food, pays nothing, and is not happy
+      o.paid = true; this.payOrder = null; if (this.term) this.term = null;
+      this.hooks.toast?.('nopay'); this.hooks.mood?.(o.table, -1); this.dirty = true;
+    }
   }
   // ---- the wholesaler: validate, charge the till during service (free play is free), then a crate arrives
   order(items, pid) {
@@ -271,6 +336,7 @@ export class Service {
       } else w.moving = false;
       if (w.path.length) continue;
       const o = w.order;
+      if (w.state === 'fetch' && this.truck && !o.paid && !o.plate.dead) { w.yaw = Math.PI; this.payStep(w, o, dt); continue; }
       if (w.state === 'fetch') {
         w.yaw = Math.PI;   // face the pass (+z)
         const plate = o.plate, inv = plate.rot.clone().invert();
@@ -282,8 +348,9 @@ export class Service {
         const st = K.tables[o.table].stand; this.pathTo(w, st[0], st[2]);
       } else if (w.state === 'deliver') {
         const rec = RECIPE_BY_ID[o.r], j = o.judge;
-        const pay = Math.max(10, Math.round((rec.price * (0.55 + 0.45 * j.quality) + rec.price * 0.35 * o.frac - j.junk * 8) * this.mods.pay));
-        this.coins += pay; this.served++; o.st = 'gone'; this.orders = this.orders.filter(x => x !== o); this.dirty = true;
+        const pay = o.owed || Math.max(10, Math.round((rec.price * (0.55 + 0.45 * j.quality) + rec.price * 0.35 * o.frac - j.junk * 8) * this.mods.pay));
+        if (!this.truck) this.coins += pay;
+        this.served++; o.st = 'gone'; this.orders = this.orders.filter(x => x !== o); this.dirty = true;
         w.carry = false; w.state = 'return'; w.order = null;
         this.hooks.delivered?.({ w: w.id, table: o.table, carry: o.carry, pay, quality: j.quality });
         this.hooks.sfx?.('success'); this.hooks.toast?.('served', rec.id, pay); this.hooks.mood?.(o.table, 1);
@@ -292,7 +359,9 @@ export class Service {
     }
   }
   state() {
-    return { run: this.running ? 1 : 0, time: Math.max(0, Math.ceil(this.timeLeft)), coins: this.coins, served: this.served, failed: this.failed, best: this.best,
+    const o = this.payOrder, pay = !o ? null : o.card ? { card: 1, want: o.want || o.owed, typed: this.term ? this.term.typed : 0, bad: this.term && this.term.bad > 0 ? 1 : 0, ok: this.term && this.term.ok > 0 ? 1 : 0 }
+      : { card: 0, owed: o.owed, tendered: o.tendered, change: o.tendered - o.owed, got: this.moneyNear(this.waiters.find(w => w.order === o)?.pos.x ?? 0).sum };
+    return { pay, run: this.running ? 1 : 0, time: Math.max(0, Math.ceil(this.timeLeft)), coins: this.coins, served: this.served, failed: this.failed, best: this.best,
       orders: this.orders.map(o => ({ id: o.id, r: o.r, table: o.table, t: Math.round(o.t), T: Math.round(o.T), st: o.st })), labels: this.labels, result: this.result };
   }
 }

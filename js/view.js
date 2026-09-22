@@ -139,6 +139,16 @@ export class View {
 
   // ------------------------------------------------------------------ service visuals: labels over plates on the pass + paper tickets
   setService(svc) {
+    const T = this.K && this.K.term, p = svc.pay, li = this.lang === 'en' ? 1 : 0;
+    if (T) {
+      const key = p ? `${p.card}|${p.want || p.owed}|${p.typed}|${p.change}|${p.got}|${p.bad}|${p.ok}` : '-';
+      if (key !== T.key) {
+        T.key = key;
+        if (!p) T.draw(li ? 'READY' : 'KLAR', '—');
+        else if (p.card) T.draw(p.ok ? (li ? 'TAP NOW' : 'BLIPPA NU') : p.bad ? (li ? 'WRONG' : 'FEL BELOPP') : `${li ? 'CARD' : 'KORT'} ${p.want} kr`, `${p.typed}`, !!p.bad);
+        else T.draw(li ? `GOT ${p.tendered}` : `FICK ${p.tendered}`, `${li ? 'CHANGE' : 'VÄXEL'} ${Math.max(0, p.change - p.got)}`);
+      }
+    }
     this.waiting = new Map(); for (const o of svc.orders) if (o.st === 'open') this.waiting.set(o.table, o.t / o.T);
     const want = new Map(svc.labels.map(l => [l.id, l]));
     for (const [id, lb] of this.labels) if (!want.has(id) || !this.items.has(id)) { this.scene.remove(lb.sprite); lb.sprite.material.map.dispose(); lb.sprite.material.dispose(); this.labels.delete(id); }

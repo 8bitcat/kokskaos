@@ -6,6 +6,7 @@ import { COOK } from './config.js';
 import { box, cyl, ball, cap, ring, CAPX, C, FOOD_PHYS } from './itemkit.js';
 import { UTENSILS } from './items_utensils.js';
 import { FOODS } from './items_food.js';
+import { MONEY } from './items_money.js';
 export { C };
 
 // ---------------------------------------------------------------- item table
@@ -333,7 +334,7 @@ export const ITEMS = {
     parts: [{ g: 'ball', r: 0.03, sc: [1.15, 0.75, 1.15], p: [0, 0, 0], c: C.mush }],
   },
 };
-Object.assign(ITEMS, UTENSILS, FOODS);
+Object.assign(ITEMS, UTENSILS, FOODS, MONEY);
 // how the core ingredients react to the new tools / extra cooking
 ITEMS.sausage.cut = { into: 'sausagecoin', n: 5 };
 ITEMS.sauce.cook = { t: { fry: 6, boil: 6, bake: 10 }, to: 0xa82114 };

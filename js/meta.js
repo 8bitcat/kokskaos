@@ -39,7 +39,7 @@ export class Meta {
       cards.appendChild(c);
     }
     box.appendChild(cards);
-    const sel = REST_BY_ID[p.d.sel], menu = menuFor(sel.tier, lvl), next = RECIPES.filter(r => r.tier <= sel.tier && r.lvl > lvl).sort((a, b) => a.lvl - b.lvl)[0];
+    const sel = REST_BY_ID[p.d.sel], menu = menuFor(sel.tier, lvl, sel.menu), next = RECIPES.filter(r => (sel.menu ? sel.menu.includes(r.id) : r.tier <= sel.tier) && r.lvl > lvl).sort((a, b) => a.lvl - b.lvl)[0];
     box.appendChild(el('p', 'restd', `${sel.d[this.li]}<br><span class="menuline">${L('Meny', 'Menu')}: ${menu.map(r => r.icon).join(' ')}${next ? ` <i>· ${L('nästa rätt på nivå', 'next dish at level')} ${next.lvl}: ${next.icon}</i>` : ''}</span>`));
     const row = el('div', 'row2');
     const b1 = el('button', 'btn small', `🔧 ${L('Renovera & uppgradera', 'Renovate & upgrade')}`); b1.onclick = () => this.openShop();

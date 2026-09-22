@@ -109,10 +109,11 @@ export function buildKitchen({ R, world, scene, sim, view, lang = 'sv', rest, up
   if (up.clean) Object.assign(COL, { floorA: 0xe6dcc0, floorB: 0x86a596, grime: false, top: 0xd9d3c3 });
   if (up.lights) Object.assign(COL, { flicker: false, light: 1.0 });
   const lay = rest.layout(L, up);
+  const truck = !!rest.truck;
   const K = {
     R, world, scene, batch: new Batch(), nextFix: 1, rest, theme: COL,
     burners: [], ovens: [], fryers: [], taps: [], blenders: [], trash: [], stock: [], tools: [], tables: [], fixtures: [],
-    pass: null, lever: 0, spawns: [], lampGlows: [], flicker: !!COL.flicker, light: COL.light || 1, bg: COL.bg,
+    pass: null, lever: 0, spawns: [], lampGlows: [], flicker: !!COL.flicker, light: COL.light || 1, bg: COL.bg, truck,
     solid(x, y, z, sx, sy, sz, yaw = 0) {
       world.createCollider(R.ColliderDesc.cuboid(sx / 2, sy / 2, sz / 2).setTranslation(x, y, z).setRotation(quatY(yaw))
         .setCollisionGroups(GROUPS.static).setFriction(0.8).setRestitution(0.1));
@@ -151,7 +152,7 @@ export function buildKitchen({ R, world, scene, sim, view, lang = 'sv', rest, up
 
   // ================================================================ room shell
   const { hx, hz, wallH, diningDepth, passX } = ROOM, zN = -hz, zD = -hz - diningDepth;
-  {
+  if (!truck) {
     const fm = new THREE.Mesh(new THREE.PlaneGeometry(hx * 2, hz * 2), new THREE.MeshToonMaterial({ map: floorTexture(COL.floorA, COL.floorB, [hx, hz], COL.grime), gradientMap: toonGradient() }));
     fm.rotation.x = -Math.PI / 2; fm.receiveShadow = true; scene.add(fm);
     const dm = new THREE.Mesh(new THREE.PlaneGeometry(hx * 2, diningDepth), new THREE.MeshToonMaterial({ map: floorTexture(COL.diningFloorA, COL.diningFloorB, [hx * 2, diningDepth], COL.grime), gradientMap: toonGradient() }));
@@ -162,11 +163,12 @@ export function buildKitchen({ R, world, scene, sim, view, lang = 'sv', rest, up
   }
   const W = new Frame(K, 0, 0, 0);
   const wall = (x, y, z, sx, sy, sz, c) => W.box(x, y, z, sx, sy, sz, c, { solid: true, shadow: false });
+  const sideW = hx - passX;                     // wall either side of the pass / hatch (also used by the wall decor)
+  if (!truck) {
   wall(0, wallH / 2, hz + 0.15, hx * 2 + 0.6, wallH, 0.3, COL.wall);                          // south
   wall(-hx - 0.15, wallH / 2, (hz + zD) / 2, 0.3, wallH, hz - zD, COL.wall);                  // west
   wall(hx + 0.15, wallH / 2, (hz + zD) / 2, 0.3, wallH, hz - zD, COL.wall);                   // east
   wall(0, wallH / 2, zD - 0.15, hx * 2 + 0.6, wallH, 0.3, COL.diningWall);                    // dining far wall
-  const sideW = hx - passX;
   wall(-passX - sideW / 2, wallH / 2, zN, sideW, wallH, 0.3, COL.wall);                       // north wall left of pass
   wall(passX + sideW / 2, wallH / 2, zN, sideW, wallH, 0.3, COL.wall);
   wall(0, (2.55 + wallH) / 2, zN, passX * 2, wallH - 2.55, 0.3, COL.wall);                    // above pass window
@@ -194,6 +196,57 @@ export function buildKitchen({ R, world, scene, sim, view, lang = 'sv', rest, up
       W.cyl(lx, wallH - 0.45, lz, 0.015, 0.9, COL.black, { shadow: false }); W.cyl(lx, wallH - 0.98, lz, 0.32, 0.2, 0xf9d65c, { shadow: false });
       W.cyl(lx, wallH - 1.09, lz, 0.26, 0.04, 0xfffbe0, { mat: 'glow', shadow: false });
     }
+  }
+
+  } else buildTruckShell();
+
+  // ---- a food truck instead of a building: street, body on wheels, hatch with a propped-open flap
+  function buildTruckShell() {
+    const T = 0.12, sideW = hx - passX, bw = hx + T, bd = hz + T;
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshToonMaterial({ map: floorTexture(COL.groundA, COL.groundB, [26, 26], false), gradientMap: toonGradient() }));
+    ground.rotation.x = -Math.PI / 2; ground.position.set(0, -0.004, -10); ground.receiveShadow = true; scene.add(ground);
+    K.solid(0, -0.55, -10, 80, 1, 80);
+    const fm = new THREE.Mesh(new THREE.PlaneGeometry(hx * 2, hz * 2), new THREE.MeshToonMaterial({ map: floorTexture(COL.floorA, COL.floorB, [hx * 2, hz * 2], COL.grime), gradientMap: toonGradient() }));
+    fm.rotation.x = -Math.PI / 2; fm.position.y = 0.004; fm.receiveShadow = true; scene.add(fm);
+    K.solid(0, -0.5, 0, hx * 2 + 1, 1, hz * 2 + 1);
+    // body: back + ends + the two panels beside the hatch + the header above it
+    W.box(0, wallH / 2, hz + T / 2, hx * 2 + T * 2, wallH, T, COL.truck, { solid: true });
+    for (const s of [-1, 1]) W.box(s * (hx + T / 2), wallH / 2, 0, T, wallH, hz * 2, COL.truck, { solid: true });
+    for (const s of [-1, 1]) W.box(s * (passX + sideW / 2), wallH / 2, -(hz + T / 2), sideW, wallH, T, COL.truck, { solid: true });
+    W.box(0, (2.02 + wallH) / 2, -(hz + T / 2), passX * 2, wallH - 2.02, T, COL.truck, { solid: true });
+    W.box(0, wallH + 0.07, 0, hx * 2 + T * 2 + 0.18, 0.14, hz * 2 + T * 2 + 0.18, COL.truckRoof);      // roof
+    K.solid(0, wallH + 0.4, 0, hx * 2, 1, hz * 2);
+    const cm = new THREE.Mesh(new THREE.PlaneGeometry(hx * 2, hz * 2), mat(COL.ceiling)); cm.rotation.x = Math.PI / 2; cm.position.y = wallH; scene.add(cm);
+    for (const s of [-1, 1]) { W.box(0, 1.28, s * (hz + T + 0.012), hx * 2 + T * 2, 0.2, 0.02, COL.stripe, { shadow: false }); W.box(0, 0.3, s * (hz + T + 0.012), hx * 2 + T * 2, 0.6, 0.02, 0x2b2f38, { shadow: false }); }
+    for (const s of [-1, 1]) { W.box(s * (hx + T + 0.012), 1.28, 0, 0.02, 0.2, hz * 2 + T * 2, COL.stripe, { shadow: false }); W.box(s * (hx + T + 0.012), 0.3, 0, 0.02, 0.6, hz * 2 + T * 2, 0x2b2f38, { shadow: false }); }
+    const wheelGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.24, 18), hubGeo = new THREE.CylinderGeometry(0.13, 0.13, 0.26, 10);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) for (const [geo, col] of [[wheelGeo, 0x1d1f24], [hubGeo, 0xc9ced4]]) {
+      const m = new THREE.Mesh(geo, mat(col)); m.rotation.x = Math.PI / 2; m.position.set(sx * (hx - 0.95), 0.34, sz * (hz + T + 0.13)); m.castShadow = true; scene.add(m);
+    }
+    // the hatch flap, propped open over the counter
+    const flap = new THREE.Mesh(new THREE.BoxGeometry(passX * 2 + 0.24, 0.06, 1.5), mat(COL.truck));
+    flap.position.set(0, 2.02 + Math.sin(0.34) * 0.75, -(hz + T) - Math.cos(0.34) * 0.75); flap.rotation.x = 0.34; flap.castShadow = true; scene.add(flap);
+    const stripes = canvasPlane(passX * 2 + 0.24, 1.5, 256, (g, W2, H2) => { for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#e5483d' : '#f7f2e6'; g.fillRect(i * W2 / 8, 0, W2 / 8, H2); } });
+    stripes.position.copy(flap.position); stripes.position.y -= 0.035; stripes.rotation.set(-Math.PI / 2 + 0.34, 0, 0); scene.add(stripes);
+    for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.0, 8), mat(C.steelDark)); p.position.set(s * (passX - 0.1), 1.62, -(hz + T) - 1.35); p.rotation.x = 0.34; p.castShadow = true; scene.add(p); }
+    // roof sign + a giant burger, vent
+    const sg = signMesh(L('KÖKSKAOS FOODTRUCK', 'KÖKSKAOS FOOD TRUCK'), Math.min(3.4, hx * 1.7), 0.56, COL.signFg, COL.sign);
+    sg.position.set(0, wallH + 0.55, -(hz + T + 0.01)); scene.add(sg);
+    W.box(0, wallH + 0.15, -(hz + T - 0.06), Math.min(3.4, hx * 1.7) + 0.1, 0.1, 0.12, COL.truckRoof, { shadow: false });
+    const bun = (y, r, sc, col) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), mat(col)); m.scale.set(1, sc, 1); m.position.set(hx - 1.2, wallH + y, 0.2); m.castShadow = true; scene.add(m); };
+    bun(0.34, 0.42, 0.55, 0xe0a458); bun(0.16, 0.4, 0.3, 0x7a4a2c); bun(0.05, 0.42, 0.22, 0xe0a458);
+    W.box(-hx + 1.1, wallH + 0.28, 0.1, 0.5, 0.3, 0.5, C.steelDark); W.box(-hx + 1.1, wallH + 0.46, 0.1, 0.6, 0.06, 0.6, C.steel);
+    // street dressing: parking box, queue line, lamp posts, trees, a skyline
+    const paint = (w2, h2, draw, x, z, rot) => { const m = canvasPlane(w2, h2, 256, draw); m.rotation.x = -Math.PI / 2; m.rotation.z = rot || 0; m.position.set(x, 0.006, z); scene.add(m); };
+    paint(passX * 2 + 1.2, 1.3, (g, W2, H2) => { g.fillStyle = '#f2e14a'; g.fillRect(0, H2 - 16, W2, 16); g.font = 'bold 48px Fredoka, sans-serif'; g.textAlign = 'center'; g.fillStyle = '#f2e14a'; g.fillText(L('KÖ HÄR', 'QUEUE HERE'), W2 / 2, 60); }, 0, -(hz + 2.6));
+    for (const s of [-1, 1]) { const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 4.2, 10), mat(0x3b4048)); post.position.set(s * (hx + 3.4), 2.1, -(hz + 5.2)); post.castShadow = true; scene.add(post);
+      const head = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.16, 0.34), mat(0x3b4048)); head.position.set(s * (hx + 3.4) - s * 0.3, 4.18, -(hz + 5.2)); scene.add(head);
+      const bulb = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.24), mat(0xfff3c4, 'glow')); bulb.position.set(s * (hx + 3.4) - s * 0.3, 4.09, -(hz + 5.2)); scene.add(bulb); }
+    for (const [tx, tz, r] of [[-hx - 2.6, -hz - 7.6, 1.1], [hx + 3.2, -hz - 8.4, 1.3], [-hx - 5.5, -hz - 4.2, 0.95]]) {
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 1.8, 8), mat(C.woodDark)); trunk.position.set(tx, 0.9, tz); trunk.castShadow = true; scene.add(trunk);
+      const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), mat(0x4ea63a, 'flat')); leaf.position.set(tx, 1.8 + r * 0.6, tz); leaf.castShadow = true; scene.add(leaf);
+    }
+    for (let i = 0; i < 14; i++) { const w2 = 3 + (i % 4) * 1.6, h2 = 4 + ((i * 7) % 9); W.box(-24 + i * 3.6, h2 / 2, -hz - 22 - (i % 3) * 2.5, w2, h2, 4, [0xb9c3cc, 0xa8b3bd, 0xc7d0d8][i % 3], { shadow: false }); }
   }
 
   // ================================================================ module builders
@@ -445,16 +498,23 @@ export function buildKitchen({ R, world, scene, sim, view, lang = 'sv', rest, up
 
   // --- the pass (serving counter between kitchen and dining room)
   {
-    const f = new Frame(K, 0, zN, 0), pw = passX * 2, pd = 1.25;
+    const f = new Frame(K, 0, zN, 0), pw = passX * 2, pd = truck ? 0.7 : 1.25;
     f.box(0, 0.05, 0, pw, 0.1, pd - 0.2, COL.kick); f.box(0, 0.1 + (H - 0.16) / 2, 0, pw, H - 0.16, pd - 0.06, COL.pass);
-    f.box(0, H - 0.03, 0, pw, 0.06, pd + 0.06, COL.topSteel); f.solid(0, H / 2, 0, pw, H, pd + 0.04);
+    f.box(0, H - 0.03, 0, pw, 0.06, pd + 0.06, COL.topSteel);
+    if (truck) {                    // leave a recess in the counter so the cash drawer can be pulled out
+      const g0 = -1.32, g1 = -0.58;
+      f.solid((-passX + g0) / 2, H / 2, 0, g0 + passX, H, pd + 0.04); f.solid((g1 + passX) / 2, H / 2, 0, passX - g1, H, pd + 0.04);
+      f.solid((g0 + g1) / 2, H - 0.05, 0, g1 - g0, 0.1, pd + 0.04); f.solid((g0 + g1) / 2, H / 2, -pd / 2 + 0.07, g1 - g0, H, 0.14);
+    } else f.solid(0, H / 2, 0, pw, H, pd + 0.04);
     const np = Math.floor(passX);
-    for (let i = -np; i <= np; i++) f.box(i * (passX / (np + 0.5)), 0.5, pd / 2 - 0.02, passX / (np + 0.5) - 0.1, 0.62, 0.02, COL.passTrim, { shadow: false });
-    f.box(0, 2.42, 0.1, pw, 0.06, 0.12, COL.steelDark, { shadow: false });     // heat-lamp bar + ticket rail
-    for (let x = -passX + 1; x <= passX - 0.9; x += 2.2) { f.cyl(x, 2.3, 0.1, 0.13, 0.16, 0xd9822b, { shadow: false }); f.cyl(x, 2.215, 0.1, 0.1, 0.02, 0xfff0b8, { mat: 'glow', shadow: false }); }
-    f.box(0, 2.12, 0.32, pw - 0.6, 0.04, 0.04, COL.steel, { shadow: false });
-    K.pass = { zone: { min: [-passX, H - 0.05, zN - pd / 2 - 0.05], max: [passX, H + 0.7, zN + pd / 2 + 0.05] }, railY: 2.0, railZ: zN + 0.33, railX: -passX + 1.2, waiterZ: zN - pd / 2 - 0.45, topY: H };
-    for (const sx of [-passX + 0.9, -passX + 1.6, passX - 1.6, passX - 0.9]) for (let k = 0; k < 4; k++) tool('plate', [sx, H + 0.002 + k * 0.0375, zN + 0.2], 0);
+    for (let i = -np; i <= np; i++) { const px = i * (passX / (np + 0.5)); if (truck && Math.abs(px + 0.95) < 0.5) continue; f.box(px, 0.5, pd / 2 - 0.02, passX / (np + 0.5) - 0.1, 0.62, 0.02, COL.passTrim, { shadow: false }); }
+    if (!truck) {
+      f.box(0, 2.42, 0.1, pw, 0.06, 0.12, COL.steelDark, { shadow: false });     // heat-lamp bar + ticket rail
+      for (let x = -passX + 1; x <= passX - 0.9; x += 2.2) { f.cyl(x, 2.3, 0.1, 0.13, 0.16, 0xd9822b, { shadow: false }); f.cyl(x, 2.215, 0.1, 0.1, 0.02, 0xfff0b8, { mat: 'glow', shadow: false }); }
+      f.box(0, 2.12, 0.32, pw - 0.6, 0.04, 0.04, COL.steel, { shadow: false });
+    } else f.box(0, 1.9, 0.5, pw - 0.3, 0.035, 0.035, COL.steel, { shadow: false });
+    K.pass = { zone: { min: [-passX, H - 0.05, zN - pd / 2 - 0.05], max: [passX, H + 0.7, zN + pd / 2 + 0.05] }, railY: truck ? 1.8 : 2.0, railZ: zN + (truck ? 0.5 : 0.33), railX: -passX + (truck ? 0.5 : 1.2), waiterZ: zN - pd / 2 - 0.45, topY: H };
+    for (const sx of (truck ? [-passX + 0.45, -passX + 1.1] : [-passX + 0.9, -passX + 1.6, passX - 1.6, passX - 0.9])) for (let k = 0; k < 4; k++) tool('plate', [sx, H + 0.002 + k * 0.0375, zN + (truck ? 0.12 : 0.2)], 0);
     // service lever on the wall right of the pass
     const lf = new Frame(K, passX + 1.0, zN + 0.16, 0);
     lf.box(0, 1.25, 0.03, 0.34, 0.5, 0.06, 0x2b2f38, { solid: true });
@@ -466,6 +526,51 @@ export function buildKitchen({ R, world, scene, sim, view, lang = 'sv', rest, up
       parts: [{ g: 'box', sz: [0.04, 0.32, 0.04], p: [0, 0.16, 0.02], c: C.steel }, { g: 'ball', r: 0.06, p: [0, 0.34, 0.02], c: C.red }, { g: 'cyl', r: 0.05, h: 0.1, p: [0, 0, 0.0], r3: [0, 0, Math.PI / 2], c: C.steelDark }],
     });
     K.leverPos = lf.pt(0, 1.4, 0.2);
+    if (truck) {
+      // ---- cash drawer in the counter (pull it out to reach the change)
+      const dw = 0.5, dd = 0.34, dh = 0.11;
+      fixture(f, {
+        type: 'slide', lp: [-0.95, H - 0.2, 0.15], axis: 'z', limits: [0, 0.3], mass: 2.5, damp: 9, role: 'till', n: ['Kassalåda', 'Cash drawer'], hint: ['dra ut = växel', 'pull it out = change'],
+        col: [{ s: 'box', hx: dw / 2, hy: 0.008, hz: dd / 2, p: [0, -dh / 2, 0] }, { s: 'box', hx: 0.01, hy: dh / 2, hz: dd / 2, p: [dw / 2, 0, 0] }, { s: 'box', hx: 0.01, hy: dh / 2, hz: dd / 2, p: [-dw / 2, 0, 0] },
+          { s: 'box', hx: dw / 2, hy: dh / 2, hz: 0.01, p: [0, 0, -dd / 2] }, { s: 'box', hx: dw / 2 + 0.02, hy: 0.1, hz: 0.012, p: [0, 0.02, dd / 2 + 0.012] }, { s: 'box', hx: 0.1, hy: 0.016, hz: 0.022, p: [0, 0.04, dd / 2 + 0.045] },
+          { s: 'box', hx: 0.012, hy: dh / 2, hz: dd / 2, p: [0.1, 0, 0] }, { s: 'box', hx: 0.012, hy: dh / 2, hz: dd / 2, p: [-0.1, 0, 0] }],
+        parts: [{ g: 'box', sz: [dw, 0.016, dd], p: [0, -dh / 2, 0], c: 0x8a5a2b }, { g: 'box', sz: [0.02, dh, dd], p: [dw / 2, 0, 0], c: C.wood }, { g: 'box', sz: [0.02, dh, dd], p: [-dw / 2, 0, 0], c: C.wood },
+          { g: 'box', sz: [dw, dh, 0.02], p: [0, 0, -dd / 2], c: C.wood }, { g: 'box', sz: [dw + 0.04, 0.2, 0.024], p: [0, 0.02, dd / 2 + 0.012], c: COL.passTrim }, { g: 'box', sz: [0.2, 0.032, 0.044], p: [0, 0.04, dd / 2 + 0.045], c: C.steel },
+          { g: 'box', sz: [0.024, dh, dd], p: [0.1, 0, 0], c: C.wood }, { g: 'box', sz: [0.024, dh, dd], p: [-0.1, 0, 0], c: C.wood }],
+      });
+      const money = [['note100', 3, -0.19], ['note50', 5, -0.02], ['coin10', 8, 0.16]];
+      for (const [kind, n, ox] of money) for (let i = 0; i < n; i++) tool(kind, f.pt(-0.95 + ox, H - 0.23 + i * 0.006, 0.15 + (i % 3) * 0.02 - 0.02), f.yaw, true);
+      // ---- card terminal: five big keys and a little display
+      const tx = 1.05;
+      f.box(tx, H + 0.035, 0.02, 0.26, 0.07, 0.3, 0x2b2f38, { solid: true });
+      f.box(tx, H + 0.13, -0.11, 0.26, 0.19, 0.05, 0x2b2f38, { solid: true });
+      const tcv = document.createElement('canvas'); tcv.width = 256; tcv.height = 128;
+      const ttex = new THREE.CanvasTexture(tcv); ttex.colorSpace = THREE.SRGBColorSpace;
+      const tm = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.11), new THREE.MeshBasicMaterial({ map: ttex }));
+      f.obj(tm, tx, H + 0.14, -0.078); tm.rotation.x = -0.32;
+      K.term = { cv: tcv, tex: ttex, lang,
+        draw(a, b, warn) {
+          const g = this.cv.getContext('2d');
+          g.fillStyle = warn ? '#3a1414' : '#0d241a'; g.fillRect(0, 0, 256, 128);
+          g.strokeStyle = '#2f6b52'; g.lineWidth = 6; g.strokeRect(3, 3, 250, 122);
+          g.textAlign = 'center'; g.fillStyle = warn ? '#ff9a8a' : '#8cf7c0';
+          g.font = 'bold 34px Fredoka, sans-serif'; g.fillText(a || '', 128, 50);
+          g.font = 'bold 52px Fredoka, sans-serif'; g.fillText(b || '', 128, 104);
+          this.tex.needsUpdate = true;
+        } };
+      K.term.draw(lang === 'en' ? 'READY' : 'KLAR', '—');
+      const keys = [[100, '+100', -0.075, 0.075, 0x3fbf5f], [50, '+50', 0, 0.075, 0x3fbf5f], [10, '+10', 0.075, 0.075, 0x3fbf5f], ['C', 'C', -0.05, -0.01, 0xe5483d], ['OK', '✓', 0.05, -0.01, 0x2e86c1]];
+      for (const [key, label, kx, kz, col] of keys) {
+        const lab = signMesh(label, 0.05, 0.03, '#fff', null, 'bold 90px Fredoka, sans-serif');
+        f.obj(lab, tx + kx, H + 0.086, 0.02 + kz); lab.rotation.x = -Math.PI / 2;
+        fixture(f, {
+          type: 'button', key, lp: [tx + kx, H + 0.082, 0.02 + kz], axis: 'y', limits: [-0.012, 0], mass: 0.2, damp: 4, spring: { to: 0, k: 60 }, role: 'key',
+          n: [`Knapp ${label}`, `Key ${label}`], hint: ['tryck (vänster musknapp)', 'press it (left mouse button)'],
+          col: [{ s: 'box', hx: 0.028, hy: 0.012, hz: 0.026, p: [0, 0, 0] }],
+          parts: [{ g: 'box', sz: [0.056, 0.024, 0.052], p: [0, 0, 0], c: col, round: 1 }],
+        });
+      }
+    }
   }
   // --- deliveries: a marked floor spot by the west wall + a wall phone for ordering ingredients
   if (lay.delivery) {
@@ -476,7 +581,8 @@ export function buildKitchen({ R, world, scene, sim, view, lang = 'sv', rest, up
       g.fillStyle = '#1d1d1d'; g.font = 'bold 40px Fredoka, sans-serif'; g.textAlign = 'center'; g.fillText(L('LEVERANS', 'DELIVERY'), W2 / 2, W2 / 2 + 14);
     });
     mk.rotation.x = -Math.PI / 2; mk.position.set(dx, 0.009, dz); scene.add(mk);
-    const pf = new Frame(K, -hx, dz + 0.95, Math.PI / 2);          // on the west wall, facing into the kitchen
+    const [px, pz] = lay.phone || [-hx, dz + 0.95];
+    const pf = new Frame(K, px, pz, Math.PI / 2);          // on the west wall, facing into the kitchen
     pf.box(0, 1.35, 0.045, 0.26, 0.4, 0.09, 0xd9534f, { solid: true }); pf.box(0, 1.47, 0.092, 0.16, 0.1, 0.006, 0xf4ecd2, { shadow: false });
     for (let i = 0; i < 9; i++) pf.box(-0.04 + (i % 3) * 0.04, 1.27 - Math.floor(i / 3) * 0.035, 0.093, 0.026, 0.022, 0.006, 0x2b2f38, { shadow: false });
     pf.obj(signMesh(L('📞 BESTÄLL RÅVAROR', '📞 ORDER INGREDIENTS'), 0.95, 0.2, '#fff', '#2e86c1'), 0, 1.78, 0.03);
@@ -489,7 +595,7 @@ export function buildKitchen({ R, world, scene, sim, view, lang = 'sv', rest, up
     K.delivery = { x: dx, z: dz };
   }
   // restaurant sign above the pass (crooked in the dump)
-  { const s = signMesh(rest.n[lang === 'en' ? 1 : 0].toUpperCase(), Math.min(3.6, passX * 0.9), 0.62, COL.signFg, COL.sign); s.position.set(0, Math.min(wallH - 0.45, 3.3), zN + 0.16); if (COL.grime || COL.cracks) s.rotation.z = -0.06; scene.add(s); }
+  if (!truck) { const s = signMesh(rest.n[lang === 'en' ? 1 : 0].toUpperCase(), Math.min(3.6, passX * 0.9), 0.62, COL.signFg, COL.sign); s.position.set(0, Math.min(wallH - 0.45, 3.3), zN + 0.16); if (COL.grime || COL.cracks) s.rotation.z = -0.06; scene.add(s); }
 
   // ================================================================ run-down decor: cracks, bare brick, stains, cobwebs
   const wallSpots = (n, seed) => {      // deterministic spots on the four kitchen walls: [x, y, z, rotY]
@@ -553,11 +659,13 @@ export function buildKitchen({ R, world, scene, sim, view, lang = 'sv', rest, up
     }
     K.tables.push({ p: [x, 0.77, z], seats, order, stand: [x, 0, z + 1.15] });
   };
-  for (const x of lay.tablesFront) tableAt(x, zN - 3.9, true);
-  if (diningDepth >= 7.8) for (const x of lay.tablesBack) tableAt(x, zN - 6.3, false);
-  K.waiterIdle = [[-passX + 1.0, zN - 1.15], [passX - 1.0, zN - 1.15], [0, zN - 1.15]];   // waiting at the pass, in view of the kitchen
-  const gap = Math.min(1.2, (passX * 2 - 1) / 8);
-  for (let i = 0; i < 9; i++) K.spawns.push([(i - 4) * gap, 0, zN + 2.4]);
+  const tz = lay.tableZ || [zN - 3.9, zN - 6.3];
+  for (const x of lay.tablesFront) tableAt(x, tz[0], true);
+  if (lay.tablesBack && lay.tablesBack.length) for (const x of lay.tablesBack) tableAt(x, tz[1], false);
+  K.waiterIdle = truck ? [[0.15, zN - 0.8], [-0.12, zN - 1.55], [0.18, zN - 2.3]]        // a queue in front of the hatch
+    : [[-passX + 1.0, zN - 1.15], [passX - 1.0, zN - 1.15], [0, zN - 1.15]];             // waiting at the pass, in view of the kitchen
+  const gap = truck ? (hx * 2 - 1.4) / 8 : Math.min(1.2, (passX * 2 - 1) / 8);
+  for (let i = 0; i < 9; i++) K.spawns.push([(i - 4) * gap, 0, truck ? -0.12 : zN + 2.4]);
   K.batch.build(scene);
   return K;
 }
@@ -572,8 +680,8 @@ export function addPosters(K, scene, menu, lang, tips = []) {
   const { hx, hz, passX } = ROOM, zN = -hz, sideW = hx - passX, li = lang === 'en' ? 1 : 0;
   const plane = (w, h, px, draw) => { const cv = document.createElement('canvas'); cv.width = px; cv.height = Math.round(px * h / w); draw(cv.getContext('2d'), cv.width, cv.height); const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4; const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex })); scene.add(m); return m; };
   // chalkboard on the wall left of the pass
-  if (sideW > 1.6 && menu.length) {
-    const w = Math.min(2.8, sideW - 0.5), h = w * 0.66;
+  if ((sideW > 1.6 || K.truck) && menu.length) {
+    const w = K.truck ? Math.min(2.0, sideW - 0.15) : Math.min(2.8, sideW - 0.5), h = w * 0.66;
     const m = plane(w, h, 1024, (g, W, H) => {
       g.fillStyle = '#6b4a2b'; g.fillRect(0, 0, W, H); g.fillStyle = '#243d2f'; g.fillRect(22, 22, W - 44, H - 44);
       g.fillStyle = '#f4f1e6'; g.font = 'bold 74px Caveat, cursive'; g.textAlign = 'center'; g.fillText(li ? "TODAY'S MENU" : 'DAGENS MENY', W / 2, 96);
@@ -582,12 +690,16 @@ export function addPosters(K, scene, menu, lang, tips = []) {
       g.font = `${size}px Caveat, cursive`; g.textAlign = 'left';
       menu.forEach((r, i) => { const c = i % cols, row = Math.floor(i / cols), x = 60 + c * (W - 100) / cols, y = 150 + row * (H - 160) / rows + size * 0.8; g.fillStyle = '#fff0b0'; g.fillText(r.icon, x, y); g.fillStyle = '#f4f1e6'; g.fillText(r.n[li], x + size * 1.4, y); });
     });
-    m.position.set(-(passX + sideW / 2), Math.min(2.05, ROOM.wallH - h / 2 - 0.3), zN + 0.185);
+    if (K.truck) { m.position.set(-(passX + sideW / 2), 1.42, zN - 0.155); m.rotation.y = Math.PI; }   // facing the queue outside
+    else m.position.set(-(passX + sideW / 2), Math.min(2.05, ROOM.wallH - h / 2 - 0.3), zN + 0.185);
   }
   // sticky notes: right of the pass (above the lever sign) and along the south wall over the sinks
   const spots = [];
-  for (let i = 0; i < 6; i++) spots.push([passX + 1.85 + (i % 3) * 0.5, 2.0 - Math.floor(i / 3) * 0.5, zN + 0.19, 0]);   // right of the service-lever sign
-  for (let i = 0; i < 8; i++) spots.push([hx - 1.2 - i * 1.0, 1.72 + (i % 2) * 0.46, hz - 0.045, Math.PI]);
+  if (K.truck) { for (let i = 0; i < 8; i++) { const s = i < 4 ? 1 : -1, j = i % 4; spots.push([s * (passX + 0.38 + (j % 2) * 0.55), 1.78 - Math.floor(j / 2) * 0.46, zN + 0.03, 0]); } }
+  else {
+    for (let i = 0; i < 6; i++) spots.push([passX + 1.85 + (i % 3) * 0.5, 2.0 - Math.floor(i / 3) * 0.5, zN + 0.19, 0]);   // right of the service-lever sign
+    for (let i = 0; i < 8; i++) spots.push([hx - 1.2 - i * 1.0, 1.72 + (i % 2) * 0.46, hz - 0.045, Math.PI]);
+  }
   const colors = ['#fff59b', '#ffc4d6', '#bfe4ff', '#c9f0a0'];
   tips.slice(0, spots.length).forEach((tip, i) => {
     const [x, y, z, ry] = spots[i]; if (Math.abs(x) > hx - 0.3) return;

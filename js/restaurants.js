@@ -154,4 +154,40 @@ function bigLayout(L, up, fancy) {
     tablesFront: [-10, -5, 0, 5, 10], tablesBack: [-7.5, -2.5, 2.5, 7.5], fancy, delivery: [-12.1, -6.3],
   };
 }
+// ============================================================================ the food truck: a side mode, always open
+RESTAURANTS.push({
+  id: 'truck', tier: 0, truck: true, icon: '🚚', n: ['Foodtrucken', 'The Food Truck'],
+  d: ['Sju kvadratmeter kök på hjul: lucka rakt ut mot kön, trångt, snabbt och gästerna betalar över disk.', 'Seven square metres of kitchen on wheels: a hatch straight out to the queue, cramped, fast, and the guests pay over the counter.'],
+  unlock: null, room: { hx: 3.8, hz: 1.4, wallH: 2.3, diningDepth: 8, passX: 1.6 },
+  mods: { patience: 0.85, interval: 0.6, pay: 1.2, stars: 0.8 },
+  menu: ['friesketchup', 'hotdog', 'sausagefries', 'burger', 'fishchips', 'onionrings', 'grilledcheese', 'nuggets', 'doubleburger', 'baconburger'],
+  theme: { floorA: 0xd9d3c3, floorB: 0x9aa7b0, wall: 0xf2c31b, wallTile: 0xf7f2e6, stripe: 0xe5483d, ceiling: 0xe8eef2, cab: 0x2e86c1, cabDark: 0x1f5f8a, cabWood: 0xd99a5b,
+    top: 0xf3f1ec, topSteel: 0xcfd8de, kick: 0x23262d, steel: 0xc3ced6, steelDark: 0x8896a3, fridge: 0xe8eef2, pass: 0xe5483d, passTrim: 0xb83e3a,
+    diningFloorA: 0x6f7378, diningFloorB: 0x7a7f85, diningWall: 0x8fd0f0, wainscot: 0x6f7378, table: 0xd9a05b, chair: 0x8a5a2b,
+    sign: '#e5483d', signFg: '#fff', lamp: 'none', bg: 0x8fd0f0, light: 1.15, truck: 0xf2c31b, truckRoof: 0xe8eef2, groundA: 0x6f7378, groundB: 0x7a7f85 },
+  upgrades: [
+    { id: 'lights', icon: '💡', n: ['Ljusslinga', 'String lights'], d: ['Festivalkänsla — gästerna väntar 10 % längre', 'Festival vibes — guests wait 10% longer'], price: 250 },
+    { id: 'paint', icon: '🎨', n: ['Folierad bil', 'New wrap'], d: ['Ny lack på bilen (och gästerna hittar hit)', 'A fresh wrap on the truck (and guests spot it)'], price: 400 },
+    { id: 'fryer2', icon: '🍟', n: ['Andra fritösen', 'Second fryer'], d: ['Dubbel fritering — pommes till alla', 'Twice the frying — fries for everyone'], price: 500 },
+    { id: 'awning', icon: '⛱️', n: ['Markis & ståbord', 'Awning & tables'], d: ['Gästerna väntar 20 % längre innan de blir arga', 'Guests wait 20% longer before they get angry'], price: 450 },
+    { id: 'speaker', icon: '🔊', n: ['Högtalare', 'Speakers'], d: ['+15 % betalt (och dricks) för varje rätt', '+15% pay (and tips) for every dish'], price: 600 },
+    { id: 'burners', icon: '🔥', n: ['Turbobrännare', 'Turbo burners'], d: ['Pannorna blir varma 50 % snabbare', 'Pans heat up 50% faster'], price: 700 },
+  ],
+  layout: (L, up) => ({
+    runs: [
+      { x: 3.75, z: 0.93, yaw: PI, spec: [
+        ['range', [['pan', 1], ['pan', 2]]],
+        ['fryer'],
+        up.fryer2 ? ['fryer'] : ['counter', 0.9, { top: 'steel' }, [['tray', 0, 0, 1.57], ['salt', 0.28, -0.22], ['pepper', 0.36, -0.22]]],
+        ['board', { top: 'steel' }, 'knife'],
+        ['counter', 1.0, { top: 'steel', shelf: [['pot', -0.3], ['strainer', 0.3]] }, [['plate', -0.25, 0.05], ['crock', 0.28, -0.18, ['spatula', 'tongs', 'strainer']], ['ketchup', 0.02, 0.2], ['mustard', 0.14, 0.2]]],
+        ['fridge', [[['potato', 6], ['fish', 3]], [['patty', 5], ['sausage', 6], ['bacon', 4]], [['cheese', 3], ['onion', 4]], [['tomato', 3], ['lettuce', 2]]], L('KYL', 'FRIDGE'), '#4e7a5a'],
+        ['shelf', [[{ kind: 'bun', n: 5, stock: 1 }, { kind: 'hotdogbun', n: 5, stock: 1 }], [{ kind: 'bread', n: 2, stock: 1 }, { kind: 'nugget', n: 8, stock: 1 }], [{ kind: 'plate', n: 6, dy: 0.0375 }, { kind: 'bowl', n: 3, dy: 0.06 }]], L('TORRT', 'DRY'), '#7a5c3a'],
+      ] },
+    ],
+    bins: [[3.45, -0.55]],
+    tablesFront: [-3.4, 0, 3.4], tablesBack: [], tableZ: [-4.8],
+    delivery: [-3.0, -0.35], phone: [-3.8, -0.35],
+  }),
+});
 export const REST_BY_ID = Object.fromEntries(RESTAURANTS.map(r => [r.id, r]));

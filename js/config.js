@@ -1,6 +1,6 @@
 // Kökskaos — shared constants & tuning
-export const VERSION = '0.4.0';
-export const BUILD = '2026-09-22';
+export const VERSION = '0.5.0';
+export const BUILD = '2026-09-23';
 
 export const MAX_PLAYERS = 9;          // host + 8 friends
 export const PEER_PREFIX = 'kokskaos-v1-';

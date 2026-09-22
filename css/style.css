@@ -140,3 +140,7 @@ input:focus { border-color: var(--red); }
 .sit .qty button:last-child { width: 36px; background: #fff; } .sit .qty i { font-style: normal; font-weight: 700; min-width: 22px; text-align: center; }
 .sit.on { background: #fff4c2; }
 #tip small { opacity: .85; font-size: 12.5px; }
+
+/* ---------- paying at the hatch ---------- */
+#pay { position: absolute; left: 50%; bottom: 140px; transform: translateX(-50%); background: var(--cream); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 4px 0 var(--ink); padding: 6px 18px; font-size: 18px; font-weight: 600; white-space: nowrap; display: none; }
+#pay b { font-size: 21px; color: var(--red); } #pay .typed { background: #0d241a; color: #8cf7c0; border-radius: 8px; padding: 1px 10px; font-weight: 700; } #pay .bad { color: var(--red); font-weight: 700; }

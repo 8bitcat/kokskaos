@@ -22,8 +22,8 @@ export class Hud {
     $('lockmsg').textContent = S.clickToPlay;
   }
   // the chef's notebook: intro + technique pages + one spread per dish on today's menu (+ teasers for locked dishes)
-  setMenu(ids, rest, level, K) {
-    this.nb = buildBook(this.lang, ids, rest.tier, level, K); this.page = 0; this.bookOpen = false; this.rest = rest;
+  setMenu(ids, rest, level, K, only) {
+    this.nb = buildBook(this.lang, ids, rest.tier, level, K, only, !!rest.truck); this.page = 0; this.bookOpen = false; this.rest = rest;
     const b = $('book');
     b.innerHTML = `<div class="nb"><div class="pg left" id="pgL"></div><div class="pg right" id="pgR"></div><button class="flip prev" id="bprev">◀</button><button class="flip next" id="bnext">▶</button><div class="pgno" id="pgno"></div><button class="flip close" id="bclose">✕</button></div>`;
     $('bprev').onclick = () => this.flip(-1); $('bnext').onclick = () => this.flip(1); $('bclose').onclick = () => this.book_(false);
@@ -62,6 +62,14 @@ export class Hud {
 
   setService(svc) {
     const S = this.S, li = this.lang === 'en' ? 1 : 0;
+    const p = svc.pay, bar = $('pay');
+    if (!p) bar.style.display = 'none';
+    else {
+      bar.style.display = 'block';
+      bar.innerHTML = p.card
+        ? (p.ok ? `💳 ${li ? 'Paid — the guest is tapping' : 'Betalt — gästen blippar'}` : `💳 ${li ? 'CARD' : 'KORT'}: ${li ? 'type' : 'slå in'} <b>${p.want} kr</b> ${li ? 'on the terminal' : 'på terminalen'} <span class="typed">${p.typed}</span> ${p.bad ? `<span class="bad">${li ? 'wrong — try again' : 'fel — försök igen'}</span>` : ''}`)
+        : `💵 ${li ? 'CASH' : 'KONTANT'}: ${li ? 'the guest paid' : 'gästen gav'} <b>${p.tendered} kr</b> ${li ? 'for' : 'för'} ${p.owed} kr — ${p.change > 0 ? `${li ? 'put' : 'lägg'} <b>${Math.max(0, p.change - p.got)} kr</b> ${li ? 'change on the counter' : 'växel på disken'}` : li ? 'exact!' : 'jämnt!'}`;
+    }
     $('coins').textContent = svc.coins + ' kr';
     $('timer').textContent = svc.run ? `${Math.floor(svc.time / 60)}:${String(svc.time % 60).padStart(2, '0')}` : '–:––';
     $('timer').classList.toggle('low', svc.run && svc.time < 45);
@@ -96,6 +104,8 @@ export class Hud {
     else if (kind === 'supply') { text = li ? `📞 Order placed: ${a} items${b ? ` (−${b} kr)` : ''} — delivery on its way` : `📞 Beställt: ${a} råvaror${b ? ` (−${b} kr)` : ''} — leveransen är på väg`; cls = 'good'; }
     else if (kind === 'delivered') text = li ? '📦 Delivery! The crate is on the DELIVERY spot' : '📦 Leverans! Lådan står på LEVERANS-rutan';
     else if (kind === 'nomoney') { text = li ? `💸 The till can't cover ${a} kr` : `💸 Kassan räcker inte till ${a} kr`; cls = 'bad'; }
+    else if (kind === 'overchange') { text = li ? `💸 Too much change — ${a} kr lost` : `💸 För mycket växel — ${a} kr bort`; cls = 'bad'; }
+    else if (kind === 'nopay') { text = li ? '😠 The guest got tired of waiting and paid nothing' : '😠 Gästen tröttnade och betalade inget'; cls = 'bad'; }
     else if (kind === 'supplyfail') { text = li ? '📞 Too many deliveries on the way — wait a bit' : '📞 För många leveranser på väg — vänta lite'; cls = 'bad'; }
     else if (kind === 'text') text = esc(a);
     const t = el('div', 'toast ' + cls, text); $('toasts').appendChild(t);

@@ -157,7 +157,7 @@ export function recipePage(rec, lang, K) {
 }
 
 // ------------------------------------------------------------------ technique pages
-export function techPages(lang) {
+export function techPages(lang, truck) {
   const li = lang === 'en' ? 1 : 0, p = P[lang] || P.sv;
   const t = (sv, en) => (li ? en : sv);
   return [
@@ -198,6 +198,11 @@ export function techPages(lang) {
       t('Lyft luren på den röda telefonen vid LEVERANS-rutan (eller välj "Beställ råvaror" i pausmenyn).', 'Lift the handset on the red phone by the DELIVERY spot (or pick "Order ingredients" in the pause menu).'),
       t('Välj vad du vill ha med + och −, max 30 saker per låda. I fri lek är det gratis — under serveringen dras det från kassan.', 'Pick what you want with + and −, max 30 items per crate. Free in free play — during service it is paid from the till.'),
       t('Efter några sekunder landar en låda på LEVERANS-rutan. Plocka ur den — tomma lådor försvinner av sig själva.', 'After a few seconds a crate lands on the DELIVERY spot. Take things out — empty crates disappear by themselves.')] },
+    ...(truck ? [{ id: 'pay', title: t('Betalning i luckan', 'Paying at the hatch'), photo: 'img/howto/pay.jpg', lines: [
+      t('Gästen kommer fram till luckan när rätten står klar där. Banderollen nere på skärmen säger vad som gäller.', 'The guest walks up to the hatch when the dish is standing there. The banner at the bottom of the screen says what to do.'),
+      t('KONTANT: gästen lägger sedlar på disken. Öppna kassalådan, ta växel och lägg den på disken framför gästen — ger du för mycket förlorar du mellanskillnaden.', 'CASH: the guest puts notes on the counter. Open the cash drawer, take change and put it on the counter in front of them — give too much and you lose the difference.'),
+      t('KORT: slå in beloppet på terminalen med +100, +50 och +10 och tryck ✓. Fel belopp = pip och nollställt. Sedan blippar gästen.', 'CARD: type the amount on the terminal with +100, +50 and +10 and press ✓. Wrong amount = a beep and it clears. Then the guest taps.'),
+      t('Sedlar och mynt är vanliga saker: du kan ta en hel näve och sopa ner dem i kassalådan.', 'Notes and coins are ordinary items: you can grab a whole handful and sweep them into the drawer.')] }] : []),
     { id: 'bin', title: t('Tunnan', 'The bin'), photo: 'img/howto/bin.jpg', lines: [
       t('Bränd mat, missar och golvmat: släng dem i de gröna tunnorna. Puff — borta.', 'Burnt food, mistakes and floor food: throw them in the green bins. Poof — gone.'),
       t('Råvaror fylls på av sig själva i kylar, backar och hyllor. Verktyg som ligger länge på golvet hittar hem själva.', 'Ingredients restock themselves in fridges, crates and shelves. Tools left on the floor find their own way home.')] },
@@ -205,12 +210,12 @@ export function techPages(lang) {
 }
 
 // all pages for the notebook: intro, technique, menu recipes, coming-up recipes
-export function buildBook(lang, menuIds, tier, level, K) {
+export function buildBook(lang, menuIds, tier, level, K, only, truck) {
   const li = lang === 'en' ? 1 : 0, p = P[lang] || P.sv, have = new Set(menuIds);
   const pages = [{ kind: 'intro', title: p.intro, text: TXT.INTRO[li], doneness: TXT.DONENESS[li] || p.done, tips: TXT.TIPS.map(t => t[li]), flip: p.flipPages }];
-  for (const t of techPages(lang)) pages.push({ kind: 'tech', ...t });
+  for (const t of techPages(lang, truck)) pages.push({ kind: 'tech', ...t });
   for (const r of RECIPES) if (have.has(r.id)) pages.push({ kind: 'recipe', ...recipePage(r, lang, K) });
-  const next = RECIPES.filter(r => !have.has(r.id) && r.tier <= tier).sort((a, b) => a.lvl - b.lvl).slice(0, 8);
+  const next = RECIPES.filter(r => !have.has(r.id) && (only ? only.includes(r.id) : r.tier <= tier)).sort((a, b) => a.lvl - b.lvl).slice(0, 8);
   for (const r of next) pages.push({ kind: 'locked', id: r.id, title: r.n[li], icon: r.icon, lvl: r.lvl, text: p.locked(r.lvl), photo: `img/recipes/${r.id}.jpg` });
   return { pages, labels: { ingredients: p.ingredients, steps: p.steps, price: p.price, tech: p.tech, menu: p.menu, next: p.nextLevel, tips: p.tips, flip: p.flipPages } };
 }

@@ -28,6 +28,13 @@ URL-parametrar: `?lang=sv|en`, `?join=KOD`, `?rest=dump|bistro|grand|star`, `?ch
 - **Kockens anteckningar (Tab):** en handskriven receptbok med foton ur spelet (`img/recipes`, `img/howto`,
   genererade av `tools/photos.mjs`), steg-för-steg-instruktioner som genereras ur receptdata (`js/cookbook.js`)
   och klotter/post-it-lappar från `js/cookbook_text.js`. Samma lappar sitter på väggarna, plus en menytavla vid luckan.
+- **Foodtruck-läge:** femte spelplatsen (`truck: true` i `js/restaurants.js`) — ett 7,6 × 2,8 m kök på hjul på en gata,
+  lucka rakt ut mot en kö, picknickbord utanför, egen gatumatsmeny och egna uppgraderingar (ljusslinga, folierad bil,
+  andra fritösen, markis, högtalare, turbobrännare). Byggs av `buildTruckShell()` i kitchen.js.
+- **Betalning i luckan (foodtruck):** gästen kommer fram när rätten står i luckan. KONTANT = sedlar läggs på disken,
+  du öppnar kassalådan och lägger växel framför gästen (för mycket = förlust). KORT = slå in beloppet på terminalen
+  (+100/+50/+10, C, ✓ — fixturtyp `button`, pekas på med handen) så blippar gästen. Sedlar/mynt (`js/items_money.js`)
+  är vanliga fysikföremål som går att ta en näve av.
 - **Beställa råvaror:** lyft luren på den röda väggtelefonen vid LEVERANS-rutan (eller pausmenyn) → beställningsmeny
   (`js/supplier.js`). Värden tar betalt ur kassan under servering (gratis i fri lek) och släpper en `deliverycrate`
   med råvarorna på rutan; tomma lådor försvinner av sig själva.
